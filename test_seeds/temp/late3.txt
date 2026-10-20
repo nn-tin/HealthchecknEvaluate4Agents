@@ -1,0 +1,57 @@
+CONVERSATION 3 — MULTI-TURN CORRECTION / PREVIEW INVALIDATION
+
+Kịch bản:
+- User bắt đầu yêu cầu tạo đơn đi trễ nhưng không cung cấp đủ thông tin.
+- Thông tin được đưa lắc nhắc qua nhiều lượt.
+
+Ví dụ cấu trúc:
+  "Mai tôi đi trễ"
+  → sau đó cung cấp số phút
+  → có thể thêm lý do
+
+- Sau khi đủ dữ liệu → preview.
+
+Tuy nhiên user KHÔNG xác nhận ngay.
+
+User sửa thông tin, ví dụ:
+- "à đổi thành 45 phút"
+- "không, thứ 3 tuần sau"
+- hoặc đổi cả ngày và số phút.
+
+Agent phải bỏ state preview cũ và preview lại dữ liệu mới.
+
+User xác nhận preview mới → tạo thật.
+
+Sau khi tạo:
+- user có thể nói "hủy cái vừa tạo"
+- hoặc "thôi không cần nữa, hủy đi"
+
+Hủy chính đơn vừa tạo.
+
+
+Yêu cầu cần đạt:
+
+- start_session đầu tiên.
+- không hỏi user empId.
+- ngày tương đối → get_calendar.
+- thiếu số phút → chưa gọi create thật.
+- khi đủ dữ liệu → create_late_request(preview=true).
+
+Quan trọng:
+Nếu user thay đổi dữ liệu sau preview:
+- không được dùng preview cũ để tạo.
+- không được gọi preview=false ngay.
+- phải cập nhật state theo thông tin mới.
+- nếu ngày mới tương đối → resolve lại bằng get_calendar khi cần.
+- phải gọi create_late_request(preview=true) cho dữ liệu mới.
+- chỉ preview mới nhất mới được xác nhận.
+
+Sau khi user xác nhận:
+- create_late_request(preview=false) phải có arguments tương ứng với preview MỚI NHẤT.
+- submitRef lấy từ kết quả tạo thành công.
+
+Nếu user hủy:
+- cancel_late_request phải dùng submitRef của chính đơn vừa tạo.
+- không get_late_summary.
+- không tự tìm/hủy đơn khác.
+- không tuyên bố thành công nếu cancel failure.

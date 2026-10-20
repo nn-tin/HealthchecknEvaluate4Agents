@@ -1,0 +1,24 @@
+CONVERSATION 1 — XEM LỊCH THEO NGÀY TƯƠNG ĐỐI → TRA CỨU LỊCH Ở NGÀY KHÁC
+
+Kịch bản:
+User muốn xem lịch của mình vào một ngày tương đối, ví dụ "mai tôi có lịch gì?".
+Agent phải dùng calendar để resolve "mai" thành ngày cụ thể.
+Sau khi có ngày, agent lấy danh sách lịch của user trong ngày đó.
+Agent trả nguyên văn nội dung lịch từ hệ thống.
+User tiếp tục hỏi lịch ở một ngày tương đối khác, ví dụ "còn thứ 6 tuần sau thì sao?".
+Vì calendar đã được lấy trước đó trong conversation, agent sử dụng dữ liệu calendar đã có để resolve ngày nếu cụm tương ứng đã có trong kết quả.
+Agent lấy danh sách lịch của ngày mới.
+User có thể tiếp tục hỏi về một lịch vừa xuất hiện trong kết quả, nhưng conversation chỉ dừng ở việc tra cứu, không sửa hoặc hủy lịch.
+
+Yêu cầu cần đạt:
+Với "mai", phải sử dụng getCalendar để resolve ngày. Không được tự tính ngày.
+getCalendar chỉ gọi một lần trong conversation nếu kết quả đã chứa đủ cụm ngày cần dùng.
+Ngày phải lấy từ đúng phrases tương ứng với cách nói của user.
+Sau khi resolve "mai", phải gọi listEvents với ngày đã lấy được.
+Khi user chuyển sang "thứ 6 tuần sau", phải resolve đúng phrase mới, không tiếp tục dùng ngày "mai".
+Phải gọi listEvents trong lượt user hỏi về lịch của ngày mới.
+Dữ liệu lịch phải lấy từ kết quả listEvents, không tự suy luận từ conversation.
+Nếu listEvents trả reply.message, phải sử dụng nguyên văn nội dung đó theo quy tắc của agent.
+Không gọi resolveParticipants, checkAvailability hoặc getRooms nếu user không hỏi về người hoặc phòng.
+Không gọi createBooking, updateBooking hoặc cancelBooking.
+Không hiển thị mã lịch, mã nhân viên, email hoặc identifier nội bộ.

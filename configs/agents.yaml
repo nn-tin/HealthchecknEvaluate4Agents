@@ -1,0 +1,80 @@
+{
+  "agents": {
+    "leave": {
+      "display_name": "Leave Agent",
+      "api_key_env": "DIFY_LEAVE_REQUEST_API_KEY",
+      "prompt_file": "system_prompts/leave.txt",
+      "chatbot_role": "Trợ lý nội bộ giúp nhân viên tạo và quản lý yêu cầu nghỉ, trả lời tiếng Việt ngắn gọn và không lộ thông tin nội bộ.",
+      "relevant_topics": ["nghỉ phép", "công tác", "thai sản", "cưới", "tang", "đơn nghỉ"],
+      "available_tools": [
+        {"name": "start_session", "description": "Bắt buộc gọi ở tin nhắn đầu tiên để mở phiên, lấy và lưu empId; đồng thời trả số phép còn lại, quyền thai sản và ngày hiện tại."},
+        {"name": "get_calendar", "description": "Dùng bảng lịch hệ thống để quy đổi ngày nói bằng lời như 'thứ 6 tuần sau' hoặc '3 ngày nữa'; không tự cộng trừ ngày."},
+        {"name": "create_leave", "description": "Tạo đơn nghỉ sau khi user xác nhận; nhận thông tin tự nhiên, leaveType và empId, còn backend tự map loại phép, tính ngày, xử lý cuối tuần/nửa ngày và validate."},
+        {"name": "submit_leave", "description": "Gửi đơn nghỉ đi duyệt sau khi user đồng ý, dùng submitRef do create_leave trả về cùng empId của phiên."},
+        {"name": "get_leave_summary", "description": "Xem, tra cứu hoặc đếm các đơn đã có của nhân viên theo năm và trạng thái; trả cả leave, absence, late cùng submitRef, không dùng để tạo hoặc gửi đơn."},
+        {"name": "get_leave_entitlement_lookup", "description": "Lấy các loại phép và số dư khả dụng; dùng khi xem số ngày còn lại hoặc lấy leaveEntId lúc đổi loại phép."},
+        {"name": "cancel_leave", "description": "Hủy đơn nghỉ đã tạo ở cả trạng thái đã nộp hoặc đã duyệt, dùng submitRef và empId; chỉ gọi sau khi user xác nhận hủy."},
+        {"name": "recall_leave", "description": "Thu hồi đơn đang chờ duyệt về cho nhân viên để sửa hoặc bỏ; không dùng cho đơn đã duyệt hay đơn chưa nộp, và chỉ gọi sau khi user xác nhận."},
+        {"name": "edit_leave", "description": "Sửa ngày hoặc lý do của đơn Open/Pending Approve; chỉ gửi field cần đổi, không hỗ trợ đơn đã duyệt/hủy/từ chối, đổi nửa ngày, đổi loại nghỉ hoặc sửa đơn đi trễ."}
+      ],
+      "default_inputs": {"emp_id": "4004", "emp_name": "Archie"},
+      "healthcheck_probe": "Cho mình xem các đơn nghỉ trong tháng này của mình."
+    },
+    "late": {
+      "display_name": "Late Agent",
+      "api_key_env": "DIFY_LATE_REQUEST_API_KEY",
+      "prompt_file": "system_prompts/late.txt",
+      "chatbot_role": "Trợ lý HR chỉ hỗ trợ tạo, gửi, sửa, thu hồi, hủy và tra cứu đơn đi trễ bằng tiếng Việt.",
+      "relevant_topics": ["đi trễ", "đơn đi trễ", "số phút đi trễ", "gửi duyệt", "thu hồi đơn"],
+      "available_tools": [
+        {"name": "start_session", "description": "Gọi đầu tiên mỗi phiên để lấy và lưu empId, serverToday và serverTodayLabel làm mốc xử lý ngày."},
+        {"name": "get_calendar", "description": "Trả bảng hôm nay và các tuần kế tiếp để quy đổi ngày tương đối như 'thứ 6 tuần sau'; phải tra bảng, không tự cộng trừ ngày."},
+        {"name": "get_employee_lookup", "description": "Tìm nhân viên theo KnowAs/FullName khi cần xác định empId từ tên; nếu có nhiều kết quả phải để user chọn đúng người."},
+        {"name": "create_late_request", "description": "Preview rồi tạo đơn đi trễ: gọi preview=true để backend validate và trả thẻ xem trước, sau khi user đồng ý gọi lại cùng dữ liệu với preview=false; lưu submitRef nội bộ và không hiển thị cho user."},
+        {"name": "submit_late_request", "description": "Gửi đơn đi trễ đã tạo bằng submitRef hoặc key cùng empId; backend kiểm tra quyền sở hữu và trả người duyệt cùng trạng thái."},
+        {"name": "edit_late_request", "description": "Sửa đơn đi trễ còn trong tay nhân viên; chỉ gửi field cần đổi. Đơn đang chờ duyệt phải thu hồi trước, còn đơn đã duyệt hoặc ngày đã đóng thì không sửa được."},
+        {"name": "recall_late_request", "description": "Thu hồi đơn đi trễ đang chờ duyệt về cho nhân viên để sửa hoặc gửi lại; chỉ nhận submitRef bắt đầu bằng 'late:', không dùng cho đơn đã duyệt hoặc chưa gửi."},
+        {"name": "cancel_late_request", "description": "Hủy đơn đi trễ ở mọi trạng thái bằng submitRef bắt đầu bằng 'late:'; ngày của đơn vẫn bị giữ sau khi hủy và phải báo lại message của backend cho user."},
+        {"name": "get_late_summary", "description": "Tra cứu đơn đi trễ đã có hoặc lấy submitRef cho đơn không tạo trong phiên; kết quả gồm nhiều loại đơn nên chỉ dùng item category='late'."}
+      ],
+      "default_inputs": {"emp_id": "4004", "emp_name": "Hank"},
+      "healthcheck_probe": "Cho mình xem các đơn đi trễ trong tháng này của mình."
+    },
+    "helpdesk": {
+      "display_name": "Helpdesk Agent",
+      "api_key_env": "DIFY_IT_HELPDESK_API_KEY",
+      "prompt_file": "system_prompts/helpdesk.txt",
+      "chatbot_role": "Trợ lý IT Helpdesk tạo, xem và xóa ticket IT của chính người dùng, trả lời tiếng Việt ngắn gọn.",
+      "relevant_topics": ["sự cố IT", "ticket IT", "máy tính", "mạng", "máy in", "xóa ticket"],
+      "available_tools": [
+        {"name": "prepare_helpdesk_ticket", "description": "Gọi ngay khi đủ mô tả sự cố để chuẩn bị nhưng chưa tạo ticket; in nguyên văn messageToUser và lưu confirmToken để chờ user xác nhận."},
+        {"name": "create_helpdesk_ticket", "description": "Chỉ tạo ticket sau khi user xác nhận thẻ prepare, dùng lại đúng tham số và confirmToken; in nguyên văn messageToUser và không gọi lại sau khi đã tạo."},
+        {"name": "list_my_tickets", "description": "Bắt buộc gọi khi user hỏi ticket của mình hoặc nhắc ticket cũ, không hỏi mã ticket; mặc định lấy ticket mở, có thể gồm ticket đóng/hủy trong 60 ngày."},
+        {"name": "delete_my_ticket", "description": "Xóa mềm ticket do chính user tạo khi IT chưa xử lý theo hai bước: lấy thẻ xác nhận, rồi gọi lại confirm=true với ticketCode và expectedTitle nguyên văn."},
+        {"name": "tavily_search", "description": "Tra cứu mã lỗi kỹ thuật trước khi gợi ý cách sửa; nếu không có kết quả thì đưa 1-2 bước cơ bản và đề nghị tạo ticket."}
+      ],
+      "default_inputs": {"emp_id": "4004", "emp_name": "Hank"},
+      "healthcheck_probe": "Cho anh/chị xem các ticket IT trong tháng này của mình."
+    },
+    "bookroom": {
+      "display_name": "Bookroom Agent",
+      "api_key_env": "DIFY_MEETING_BOOKING_API_KEY",
+      "prompt_file": "system_prompts/bookroom.txt",
+      "chatbot_role": "Trợ lý đặt lịch nội bộ, hỗ trợ tạo, xem, sửa, hủy lịch, tìm phòng và mời người.",
+      "relevant_topics": ["đặt lịch", "cuộc họp", "phòng họp", "lịch cá nhân", "sửa lịch", "hủy lịch"],
+      "available_tools": [
+        {"name": "getCalendar", "description": "Tra today, now và các cụm ngày tương đối để lấy đúng ngày từ bảng; không tự tính ngày, không cần gọi khi user đã nói ngày cụ thể và tool này không tạo lịch."},
+        {"name": "current_time", "description": "Lấy giờ hiện tại khi user hỏi mấy giờ để trả lời đúng một câu theo định dạng 'Bây giờ là HH:mm.'."},
+        {"name": "createBooking", "description": "Tạo lịch khi đủ thông tin; backend tự suy cấu hình theo EventType. Meeting/Customer Visit cần vòng xác nhận bằng confirmToken; nếu có phòng phải gửi cả location và locationEmail từ getRooms."},
+        {"name": "getRooms", "description": "Tìm phòng còn trống khi user muốn có phòng; giữ cả displayName và emailAddress để truyền lần lượt vào location và locationEmail."},
+        {"name": "listEvents", "description": "Liệt kê lịch trong một ngày hoặc khoảng tối đa 31 ngày, đồng thời tìm calendarId trước khi sửa/hủy; in nguyên văn reply.message và không cần getCalendar nếu ngày đã cụ thể."},
+        {"name": "resolveParticipants", "description": "Tra đúng người tham dự theo danh sách tên và bookerEmpId; gọi ngay khi nhận ra tên người, API chỉ trả record khớp thay vì toàn bộ danh sách."},
+        {"name": "checkAvailability", "description": "Kiểm tra người khác bận hay rảnh trong một khung giờ bằng EmployeeId; chỉ báo trạng thái bận/rảnh, không tiết lộ nội dung lịch."},
+        {"name": "updateBooking", "description": "Sửa lịch theo calendarId từ listEvents, chỉ gửi field cần đổi; backend trả thẻ xác nhận trước khi thực hiện và chỉ người tạo lịch được sửa."},
+        {"name": "cancelBooking", "description": "Hủy hoặc rời lịch theo calendarId từ listEvents qua vòng xác nhận; người tạo xóa lịch, người được mời chỉ rời lịch, người không liên quan bị từ chối."}
+      ],
+      "default_inputs": {"emp_id": "4004", "emp_name": "Hank", "today": "__TODAY__"},
+      "healthcheck_probe": "Cho mình xem lịch hôm nay của mình."
+    }
+  }
+}

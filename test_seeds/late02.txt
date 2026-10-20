@@ -1,0 +1,32 @@
+CONVERSATION 2 — TRA CỨU LỊCH SỬ → KIỂM TRA MỘT NGÀY TƯƠNG ĐỐI
+
+Kịch bản:
+User bắt đầu bằng yêu cầu tra cứu lịch sử đơn đi trễ, ví dụ "tháng này tôi có những đơn đi trễ nào?".
+Agent bắt đầu phiên và lấy danh sách đơn của user.
+Danh sách có thể chứa đơn đi trễ, nghỉ phép và vắng mặt.
+Agent chỉ lọc các đơn đi trễ để trả lời.
+User có thể hỏi tiếp về số lần đi trễ, số phút, trạng thái hoặc thông tin của một đơn trong kết quả.
+Sau đó user chuyển sang hỏi một ngày tương đối khác, ví dụ "còn thứ 2 tuần sau thì sao?".
+Agent phải nhận biết đây là một ngày tương đối mới và dùng calendar để quy đổi.
+Sau khi có ngày cụ thể, agent đối chiếu ngày đó với các đơn đi trễ.
+Nếu dữ liệu tra cứu hiện tại đủ để trả lời thì sử dụng lại context đã có; nếu cần lấy lại danh sách thì có thể gọi get_late_summary.
+User có thể tiếp tục hỏi chi tiết về đơn vừa được xác định, ví dụ "đơn đó bao nhiêu phút?", "ai duyệt?", "trạng thái hiện tại là gì?".
+
+Yêu cầu cần đạt:
+start_session phải là tool đầu tiên.
+start_session không được gọi lại không cần thiết trong cùng conversation.
+Không hỏi user mã nhân viên hoặc danh tính.
+Yêu cầu tra cứu lịch sử phải sử dụng get_late_summary.
+Chỉ sử dụng item có category = "late".
+Không dùng các item thuộc category khác để tính hoặc trả lời thông tin đơn đi trễ.
+Nếu user hỏi số lần đi trễ, phải đếm trực tiếp các item category = "late".
+Trạng thái đơn phải được diễn đạt cho user bằng tiếng Việt.
+Khi user đưa ra ngày tương đối mới như "thứ 2 tuần sau", bắt buộc gọi get_calendar.
+Không được tự suy luận ngày dựa trên ngày hiện tại.
+Ngày mới phải được resolve từ kết quả get_calendar.
+Context ngày mới phải override ngày đang được nói tới trước đó.
+Follow-up như "đơn đó", "bao nhiêu phút?" hoặc "ai duyệt?" phải tham chiếu đúng đơn vừa được xác định.
+Không gọi get_calendar khi user chỉ hỏi thêm thông tin của cùng một đơn đã xác định.
+Chỉ được sử dụng start_session, get_calendar, get_late_summary.
+Không gọi bất kỳ tool tạo, gửi, sửa, thu hồi, hủy hoặc lookup nhân viên nào.
+Không hiển thị các ID/token nội bộ cho user.

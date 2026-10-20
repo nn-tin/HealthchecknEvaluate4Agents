@@ -1,0 +1,28 @@
+CONVERSATION 1 — TRA CỨU ĐƠN NGHỈ → KIỂM TRA NGÀY TƯƠNG ĐỐI
+
+Kịch bản:
+User muốn xem các đơn nghỉ hiện có của mình, ví dụ "tôi có những đơn nghỉ nào?".
+Agent phải bắt đầu session trước khi xử lý nội dung.
+Agent tra cứu danh sách đơn hiện có của user.
+Kết quả có thể chứa nhiều loại đơn và nhiều trạng thái khác nhau.
+Agent trả lời dựa trên dữ liệu được trả về, không tự suy luận thêm.
+User tiếp tục hỏi về một ngày tương đối, ví dụ "thứ 6 tuần sau tôi có đơn nào không?".
+Agent phải resolve "thứ 6 tuần sau" thông qua calendar.
+Sau khi có ngày cụ thể, agent tra cứu lại danh sách đơn trong chính lượt đó và đối chiếu với ngày đã resolve.
+Nếu có đơn phù hợp, trả lời thông tin của đúng đơn đó.
+User có thể hỏi tiếp về trạng thái hoặc thông tin của đơn vừa xác định.
+
+Yêu cầu cần đạt:
+start_session phải là tool đầu tiên.
+start_session chỉ được gọi một lần khi session đã được thiết lập thành công.
+empId nhận được từ session phải được giữ và sử dụng cho các tool cần danh tính sau đó.
+Yêu cầu xem/tra cứu đơn phải gọi get_leave_summary.
+Không trả lời trạng thái hoặc dữ liệu đơn chỉ dựa trên memory của conversation.
+Với "thứ 6 tuần sau", bắt buộc gọi get_calendar.
+Không được tự tính ngày hoặc thứ.
+Ngày cụ thể phải lấy từ kết quả của get_calendar.
+Sau khi xác định ngày, dùng get_leave_summary để lấy dữ liệu đơn trong chính lượt tra cứu đó.
+Phải đối chiếu đúng ngày user hỏi, không chọn nhầm một đơn khác.
+Follow-up về chính đơn vừa xác định phải giữ đúng conversational context.
+Không gọi bất kỳ write tool nào: create_leave, submit_leave, edit_leave, recall_leave, cancel_leave
+Không hiển thị empId, submitRef hoặc identifier nội bộ.

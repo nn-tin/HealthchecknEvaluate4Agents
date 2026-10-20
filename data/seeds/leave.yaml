@@ -1,0 +1,67 @@
+{
+  "cases": [
+    {
+      "id": "leave-summary-relative-date-001",
+      "agent": "leave",
+      "name": "Tra cứu đơn nghỉ rồi kiểm tra ngày tương đối",
+      "tags": ["multi-turn", "read-only", "summary", "relative-date", "context"],
+      "user_plan": {
+        "initial_message": "Tôi có những đơn nghỉ nào?",
+        "intent": "Xem các đơn nghỉ hiện có, sau đó kiểm tra thứ 6 tuần sau có đơn nào không và hỏi thêm trạng thái hoặc thông tin của đúng đơn vừa xác định.",
+        "follow_up_behavior": "Sau khi nhận danh sách, hỏi 'Thứ 6 tuần sau tôi có đơn nào không?'. Nếu tìm thấy đơn phù hợp, hỏi tiếp về trạng thái hoặc thông tin của đơn đó; không yêu cầu thay đổi đơn."
+      },
+      "expected": {
+        "outcome": "Agent mở phiên, tra cứu summary, resolve ngày tương đối bằng calendar, gọi lại summary trong lượt kiểm tra ngày và đối chiếu đúng đơn.",
+        "must": [
+          "start_session là tool đầu tiên và chỉ gọi một lần khi session đã thành công",
+          "Giữ empId nhận từ session để dùng cho các tool cần danh tính",
+          "Yêu cầu xem hoặc tra cứu đơn phải gọi get_leave_summary",
+          "Trả lời dựa trên dữ liệu tool, không tự suy luận thêm",
+          "Với 'thứ 6 tuần sau', gọi get_calendar và không tự tính ngày hoặc thứ",
+          "Ngày cụ thể phải lấy từ kết quả get_calendar",
+          "Sau khi xác định ngày, gọi get_leave_summary trong chính lượt tra cứu đó",
+          "Đối chiếu đúng ngày user hỏi, không chọn nhầm đơn khác",
+          "Follow-up phải giữ đúng context của đơn vừa xác định"
+        ],
+        "must_not": [
+          "Trả lời trạng thái hoặc dữ liệu đơn chỉ dựa trên memory conversation",
+          "Gọi create_leave, submit_leave, edit_leave, recall_leave hoặc cancel_leave",
+          "Hiển thị empId, submitRef hoặc identifier nội bộ"
+        ]
+      },
+      "limits": {"min_user_turns": 2, "max_turns": 10, "timeout_seconds": 120}
+    },
+    {
+      "id": "leave-entitlement-summary-relative-date-001",
+      "agent": "leave",
+      "name": "Kiểm tra phép còn lại rồi tra cứu đơn hiện có",
+      "tags": ["multi-turn", "read-only", "entitlement", "summary", "relative-date"],
+      "user_plan": {
+        "initial_message": "Tôi còn bao nhiêu ngày phép?",
+        "intent": "Kiểm tra số ngày hoặc loại phép hiện có, xem danh sách đơn nghỉ, kiểm tra đơn đang chờ duyệt, rồi kiểm tra đơn vào thứ 2 tuần sau mà không thay đổi dữ liệu.",
+        "follow_up_behavior": "Sau câu trả lời về phép còn lại, hỏi 'Tôi đã có những đơn nghỉ nào?'. Tiếp tục hỏi 'Có đơn nào đang chờ duyệt không?', rồi hỏi 'Còn thứ 2 tuần sau tôi có đơn nào không?'."
+      },
+      "expected": {
+        "outcome": "Agent dùng entitlement lookup cho số dư phép, gọi summary ở từng lượt hỏi dữ liệu đơn, resolve ngày tương đối bằng calendar và chỉ thực hiện thao tác đọc.",
+        "must": [
+          "start_session là tool đầu tiên và không gọi lại khi session đã thành công",
+          "Không hỏi user mã nhân viên",
+          "Khi user hỏi số ngày hoặc loại phép, gọi get_leave_entitlement_lookup",
+          "Số phép trả lời user phải lấy từ kết quả tool, không tự cộng trừ hoặc suy luận",
+          "Khi user hỏi danh sách đơn, gọi get_leave_summary",
+          "Khi user hỏi trạng thái như 'có đơn nào đang chờ duyệt không?', gọi get_leave_summary trong chính lượt đó",
+          "Khi xuất hiện 'thứ 2 tuần sau', gọi get_calendar và lấy ngày từ kết quả",
+          "Sau khi resolve ngày, gọi get_leave_summary để tìm đơn phù hợp",
+          "Context ngày mới phải thay thế ngày đang được nói tới trước đó"
+        ],
+        "must_not": [
+          "Trả lời dữ liệu đơn bằng memory cũ của conversation",
+          "Tự tính ngày tương đối",
+          "Gọi create_leave, submit_leave, edit_leave, recall_leave hoặc cancel_leave",
+          "Hiển thị identifier hoặc token nội bộ"
+        ]
+      },
+      "limits": {"min_user_turns": 2, "max_turns": 10, "timeout_seconds": 120}
+    }
+  ]
+}

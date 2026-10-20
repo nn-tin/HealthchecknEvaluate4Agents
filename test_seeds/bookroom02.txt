@@ -1,0 +1,31 @@
+CONVERSATION 2 — KIỂM TRA NGƯỜI BẬN/RẢNH → TÌM PHÒNG TRỐNG
+
+Kịch bản:
+User muốn kiểm tra một đồng nghiệp có rảnh trong một khung giờ tương đối hay không, ví dụ "Thứ 5 tuần sau từ 14h đến 15h Lan có rảnh không?".
+Agent resolve ngày "Thứ 5 tuần sau" thông qua calendar.
+Agent xác định đúng người "Lan" bằng participant lookup.
+Nếu tên xác định được, agent kiểm tra availability của người đó trong đúng khung giờ user cung cấp.
+Agent chỉ trả lời người đó "bận" hoặc "rảnh", không tiết lộ nội dung lịch của họ.
+User tiếp tục hỏi "khung giờ đó có phòng nào trống không?".
+Agent giữ nguyên ngày và khung giờ vừa xác định.
+Agent tìm các phòng còn trống trong đúng khung giờ đó.
+Agent liệt kê các phòng từ kết quả để user tham khảo.
+User có thể hỏi lại về phòng hoặc availability nhưng không yêu cầu tạo meeting.
+
+Yêu cầu cần đạt:
+Với "Thứ 5 tuần sau", phải gọi getCalendar.
+Không được tự tính ngày.
+Ngày phải lấy từ phrase tương ứng trong kết quả calendar.
+Phải giữ nguyên khung giờ 14h–15h user đã cung cấp.
+Khi user hỏi availability của "Lan", phải dùng resolveParticipants để xác định người.
+Không được tự suy luận danh tính của "Lan".
+Chỉ dùng participant đã resolve thành công để gọi checkAvailability.
+checkAvailability phải kiểm tra đúng ngày và khung giờ user yêu cầu.
+Khi trả kết quả availability, chỉ báo "bận" hoặc "rảnh", không tiết lộ nội dung lịch của người khác.
+Khi user nói "khung giờ đó", phải reuse đúng ngày + start time + end time từ context.
+Với yêu cầu tìm phòng, phải gọi getRooms.
+Không resolve lại ngày/người khi context hiện tại đã đủ và không thay đổi.
+Không được coi việc tìm thấy phòng trống là đã đặt phòng.
+Không gọi createBooking chỉ vì user hỏi phòng trống.
+Không gọi updateBooking hoặc cancelBooking.
+Không hiển thị email phòng, mã nhân viên hoặc identifier nội bộ.

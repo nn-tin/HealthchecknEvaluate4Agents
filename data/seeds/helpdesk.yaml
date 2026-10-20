@@ -1,0 +1,66 @@
+{
+  "cases": [
+    {
+      "id": "helpdesk-list-open-requery-001",
+      "agent": "helpdesk",
+      "name": "Xem ticket đang mở rồi hỏi lại ticket cũ",
+      "tags": ["multi-turn", "read-only", "list", "open-ticket", "context"],
+      "user_plan": {
+        "initial_message": "Tôi đang có những ticket nào?",
+        "intent": "Xem các ticket IT đang mở của mình, sau đó nhắc lại một ticket bằng cách nói 'ticket lúc nãy' hoặc 'cùng vụ đó' mà không cung cấp mã ticket.",
+        "follow_up_behavior": "Sau khi agent trả danh sách, hỏi về 'ticket lúc nãy' hoặc 'cùng vụ đó'. Nếu có nhiều ticket thì dựa trên danh sách hệ thống để xác định, không yêu cầu tạo hay xóa ticket."
+      },
+      "expected": {
+        "outcome": "Agent gọi list_my_tickets ở cả lượt xem danh sách và lượt nhắc ticket cũ, đồng thời in nguyên văn reply.messageToUser.",
+        "must": [
+          "Khi user hỏi ticket của mình, gọi list_my_tickets",
+          "Truyền đúng danh tính phiên hiện tại theo cấu hình",
+          "Mặc định chỉ tra các ticket còn mở",
+          "In nguyên văn và đầy đủ reply.messageToUser",
+          "Khi user nói 'ticket lúc nãy' hoặc 'cùng vụ đó', gọi lại list_my_tickets trong chính lượt đó",
+          "Nếu có nhiều ticket, dùng danh sách hệ thống để user xác định ticket cần nói tới"
+        ],
+        "must_not": [
+          "Tự tạo bảng hoặc tóm tắt lại danh sách ticket",
+          "Trả lời thông tin ticket cũ chỉ dựa trên memory conversation",
+          "Hỏi user cung cấp mã ticket",
+          "Tự chọn một ticket khi có nhiều ticket",
+          "Gọi prepare_helpdesk_ticket, create_helpdesk_ticket hoặc delete_my_ticket",
+          "Hiển thị ID hoặc dữ liệu nội bộ"
+        ]
+      },
+      "limits": {"min_user_turns": 2, "max_turns": 10, "timeout_seconds": 120}
+    },
+    {
+      "id": "helpdesk-list-closed-then-open-001",
+      "agent": "helpdesk",
+      "name": "Xem ticket đã đóng hủy rồi chuyển lại ticket đang mở",
+      "tags": ["multi-turn", "read-only", "list", "closed-ticket", "scope-change"],
+      "user_plan": {
+        "initial_message": "Cho tôi xem cả những ticket đã xong với đã hủy gần đây.",
+        "intent": "Xem các ticket IT đã hoàn tất hoặc đã hủy gần đây, sau đó đổi phạm vi sang chỉ xem các ticket đang mở.",
+        "follow_up_behavior": "Sau khi nhận danh sách gồm ticket đóng/hủy, hỏi 'Còn những ticket đang mở thì sao?'. Có thể tiếp tục tra cứu nhưng không tạo hoặc xóa ticket."
+      },
+      "expected": {
+        "outcome": "Agent gọi list_my_tickets với includeClosed=true, sau đó gọi lại theo phạm vi mặc định chỉ lấy ticket mở và in nguyên văn từng kết quả.",
+        "must": [
+          "Yêu cầu xem ticket đã hoàn tất hoặc đã hủy phải gọi list_my_tickets với includeClosed=true",
+          "Truyền đúng danh tính phiên hiện tại theo cấu hình",
+          "In nguyên văn và đầy đủ reply.messageToUser",
+          "Khi user chuyển sang hỏi ticket đang mở, gọi lại list_my_tickets",
+          "Lượt hỏi ticket đang mở phải dùng phạm vi mặc định, không tiếp tục bao gồm ticket đã đóng"
+        ],
+        "must_not": [
+          "Tự suy luận ticket nào đã đóng hoặc đã hủy",
+          "Tự dựng lại hoặc tóm tắt danh sách ticket",
+          "Trả lời danh sách mới bằng dữ liệu nhớ từ lượt trước",
+          "Hỏi user mã ticket",
+          "Gọi prepare_helpdesk_ticket, create_helpdesk_ticket hoặc delete_my_ticket",
+          "Thực hiện bất kỳ thao tác làm thay đổi ticket nào",
+          "Hiển thị ID hoặc dữ liệu nội bộ"
+        ]
+      },
+      "limits": {"min_user_turns": 2, "max_turns": 10, "timeout_seconds": 120}
+    }
+  ]
+}

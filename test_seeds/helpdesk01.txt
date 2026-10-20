@@ -1,0 +1,25 @@
+CONVERSATION 1 — XEM CÁC TICKET ĐANG MỞ → HỎI LẠI TICKET CŨ
+
+Kịch bản:
+User muốn xem các ticket IT hiện tại của mình, ví dụ "Tôi đang có những ticket nào?".
+Agent gọi list_my_tickets để lấy các ticket đang mở.
+Agent in nguyên văn reply.messageToUser.
+User tiếp tục nhắc đến ticket cũ bằng cách nói "ticket lúc nãy" hoặc "cùng vụ đó".
+Agent phải gọi lại list_my_tickets trong chính lượt đó.
+Nếu có nhiều ticket, agent không được tự đoán user đang nhắc ticket nào.
+Agent sử dụng danh sách hệ thống trả về để user xác định ticket cần nói tới.
+
+Yêu cầu cần đạt:
+Khi user hỏi ticket của mình, bắt buộc gọi list_my_tickets.
+Phải truyền đúng danh tính phiên hiện tại theo cấu hình.
+Mặc định chỉ tra các ticket còn mở.
+Phải in nguyên văn và đầy đủ reply.messageToUser.
+Không tự tạo bảng hoặc tóm tắt lại danh sách ticket.
+Khi user nói "ticket lúc nãy" hoặc "cùng vụ đó", phải gọi lại list_my_tickets.
+Không được trả lời thông tin ticket cũ chỉ dựa trên memory conversation.
+Không hỏi user cung cấp mã ticket.
+Nếu có nhiều ticket, không tự chọn một ticket.
+Không gọi prepare_helpdesk_ticket.
+Không gọi create_helpdesk_ticket.
+Không gọi delete_my_ticket.
+Không hiển thị ID hoặc dữ liệu nội bộ.

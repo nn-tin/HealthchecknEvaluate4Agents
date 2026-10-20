@@ -1,0 +1,37 @@
+CONVERSATION 2 — CREATE → EDIT → SUBMIT → CANCEL
+
+Kịch bản:
+- User tạo một đơn đi trễ mới bằng ngày cụ thể, ví dụ dd/MM hoặc dd/MM/yyyy.
+- Có thể cung cấp ngày và số phút qua nhiều lượt.
+- Preview → xác nhận → tạo thật.
+- Chưa gửi duyệt.
+- User nhận ra thông tin sai và muốn sửa chính đơn vừa tạo.
+- Sửa số phút, ngày hoặc lý do.
+- Sau khi sửa xong user yêu cầu gửi duyệt.
+- Sau khi gửi thành công, user thay đổi quyết định và muốn hủy chính đơn đó.
+
+Yêu cầu cần đạt:
+- start_session luôn đầu tiên.
+- ngày cụ thể không được gọi get_calendar không cần thiết.
+- create_late_request phải đi qua preview=true trước.
+- preview success chưa phải create success.
+- user xác nhận → preview=false.
+- submitRef phải lấy từ đơn vừa tạo.
+
+Khi sửa trước submit:
+- edit_late_request phải thao tác trực tiếp trên submitRef của đơn vừa tạo.
+- không recall vì đơn chưa được submit.
+- không get_late_summary.
+- không create một đơn mới.
+- chỉ gửi field user thay đổi.
+
+Khi submit:
+- submit_late_request dùng chính submitRef đó.
+
+Khi hủy:
+- cancel_late_request phải hủy chính đơn được tạo trong conversation.
+- không cần tìm một đơn cũ khác.
+- không được dùng submitRef khác.
+- chỉ báo hủy khi cancel thành công.
+- phải phản ánh message backend về việc ngày vẫn bị hệ thống giữ.
+- tuyệt đối không đề nghị hủy rồi tạo lại cùng ngày.

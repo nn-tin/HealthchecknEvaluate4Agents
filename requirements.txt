@@ -1,0 +1,8 @@
+deepeval==4.2.8
+instructor>=1.7
+openai>=1.0
+pydantic>=2.10
+python-dotenv>=1.0
+requests>=2.31
+PyYAML>=6.0
+streamlit>=1.40

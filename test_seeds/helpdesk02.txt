@@ -1,0 +1,26 @@
+CONVERSATION 2 — XEM TICKET ĐÃ ĐÓNG/HỦY → CHUYỂN LẠI TICKET ĐANG MỞ
+
+Kịch bản:
+User muốn xem cả các ticket IT đã hoàn tất hoặc đã hủy, ví dụ "Cho tôi xem cả những ticket đã xong với đã hủy gần đây".
+Agent gọi list_my_tickets với tùy chọn lấy cả ticket đã đóng.
+Agent in nguyên văn reply.messageToUser.
+User sau đó đổi phạm vi, ví dụ "Còn những ticket đang mở thì sao?".
+Agent gọi lại list_my_tickets theo phạm vi mặc định chỉ lấy ticket còn mở.
+Agent in nguyên văn danh sách mới từ kết quả.
+User có thể tiếp tục tra cứu nhưng không thực hiện tạo hoặc xóa ticket.
+
+Yêu cầu cần đạt:
+Yêu cầu xem ticket đã hoàn tất/hủy phải gọi list_my_tickets với includeClosed = true.
+Phải truyền đúng danh tính phiên hiện tại theo cấu hình.
+Không tự suy luận ticket nào đã đóng hoặc đã hủy.
+Phải in nguyên văn và đầy đủ reply.messageToUser.
+Không tự dựng lại danh sách ticket.
+Khi user chuyển sang hỏi ticket đang mở, phải gọi lại list_my_tickets.
+Lượt hỏi ticket đang mở không được tiếp tục sử dụng phạm vi bao gồm ticket đã đóng.
+Không trả lời danh sách mới bằng dữ liệu nhớ từ lượt trước.
+Không hỏi user mã ticket.
+Không gọi prepare_helpdesk_ticket.
+Không gọi create_helpdesk_ticket.
+Không gọi delete_my_ticket.
+Không thực hiện bất kỳ thao tác làm thay đổi ticket nào.
+Không hiển thị ID hoặc dữ liệu nội bộ.

@@ -1,0 +1,70 @@
+{
+  "cases": [
+    {
+      "id": "bookroom-relative-day-list-events-001",
+      "agent": "bookroom",
+      "name": "Xem lịch theo ngày tương đối rồi tra cứu ngày khác",
+      "tags": ["multi-turn", "read-only", "calendar", "list-events", "relative-date"],
+      "user_plan": {
+        "initial_message": "Mai tôi có lịch gì?",
+        "intent": "Xem lịch của mình vào ngày mai, sau đó tiếp tục xem lịch vào thứ 6 tuần sau mà không tạo, sửa hoặc hủy lịch.",
+        "follow_up_behavior": "Sau khi agent trả lịch ngày mai, hỏi 'Còn thứ 6 tuần sau thì sao?'. Có thể hỏi thêm về một lịch vừa xuất hiện trong kết quả nhưng chỉ tra cứu, không yêu cầu thay đổi lịch."
+      },
+      "expected": {
+        "outcome": "Agent dùng lịch hệ thống để resolve từng ngày tương đối, gọi listEvents cho đúng ngày và trả nguyên văn dữ liệu lịch từ hệ thống.",
+        "must": [
+          "Với 'mai', gọi getCalendar để resolve ngày và không tự tính ngày",
+          "Ngày phải lấy từ đúng phrase tương ứng trong kết quả getCalendar",
+          "Sau khi resolve 'mai', gọi listEvents với ngày đã lấy được",
+          "Chỉ gọi getCalendar một lần nếu kết quả đã chứa đủ cụm ngày cần dùng trong conversation",
+          "Khi user chuyển sang 'thứ 6 tuần sau', resolve đúng phrase mới và gọi listEvents cho ngày mới",
+          "Dữ liệu lịch phải lấy từ kết quả listEvents",
+          "Nếu listEvents trả reply.message, sử dụng nguyên văn nội dung đó"
+        ],
+        "must_not": [
+          "Tự tính ngày tương đối",
+          "Tiếp tục dùng ngày 'mai' khi user chuyển sang 'thứ 6 tuần sau'",
+          "Tự suy luận dữ liệu lịch từ conversation",
+          "Gọi resolveParticipants, checkAvailability hoặc getRooms khi user không hỏi về người hoặc phòng",
+          "Gọi createBooking, updateBooking hoặc cancelBooking",
+          "Hiển thị mã lịch, mã nhân viên, email hoặc identifier nội bộ"
+        ]
+      },
+      "limits": {"min_user_turns": 2, "max_turns": 10, "timeout_seconds": 120}
+    },
+    {
+      "id": "bookroom-participant-availability-rooms-001",
+      "agent": "bookroom",
+      "name": "Kiểm tra người bận rảnh rồi tìm phòng trống",
+      "tags": ["multi-turn", "read-only", "availability", "participant", "room", "relative-date"],
+      "user_plan": {
+        "initial_message": "Thứ 5 tuần sau từ 14h đến 15h Daniel có rảnh không?",
+        "intent": "Kiểm tra Daniel bận hay rảnh trong khung 14h–15h thứ 5 tuần sau, sau đó tìm các phòng trống trong đúng khung giờ đó mà không tạo meeting.",
+        "follow_up_behavior": "Sau khi nhận kết quả bận/rảnh của Daniel, hỏi 'Khung giờ đó có phòng nào trống không?'. Có thể hỏi lại về phòng hoặc availability nhưng không yêu cầu đặt lịch."
+      },
+      "expected": {
+        "outcome": "Agent resolve đúng ngày và người, chỉ báo Daniel bận/rảnh, sau đó giữ nguyên ngày và khung giờ để liệt kê phòng trống.",
+        "must": [
+          "Gọi getCalendar để resolve 'thứ 5 tuần sau' và không tự tính ngày",
+          "Ngày phải lấy từ phrase tương ứng trong kết quả getCalendar",
+          "Giữ nguyên khung giờ 14h–15h user đã cung cấp",
+          "Dùng resolveParticipants để xác định Daniel và không tự suy luận danh tính",
+          "Chỉ dùng participant đã resolve thành công để gọi checkAvailability",
+          "checkAvailability phải kiểm tra đúng ngày và khung giờ user yêu cầu",
+          "Chỉ báo người đó bận hoặc rảnh, không tiết lộ nội dung lịch của họ",
+          "Khi user nói 'khung giờ đó', reuse đúng ngày, giờ bắt đầu và giờ kết thúc từ context",
+          "Gọi getRooms để tìm phòng trống và liệt kê phòng từ kết quả"
+        ],
+        "must_not": [
+          "Tự tính ngày hoặc tự suy luận danh tính của Daniel",
+          "Resolve lại ngày hoặc người khi context hiện tại đã đủ và không thay đổi",
+          "Tiết lộ nội dung lịch của người khác",
+          "Coi việc tìm thấy phòng trống là đã đặt phòng",
+          "Gọi createBooking, updateBooking hoặc cancelBooking",
+          "Hiển thị email phòng, mã nhân viên hoặc identifier nội bộ"
+        ]
+      },
+      "limits": {"min_user_turns": 2, "max_turns": 10, "timeout_seconds": 120}
+    }
+  ]
+}

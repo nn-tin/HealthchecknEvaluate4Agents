@@ -1,0 +1,29 @@
+CONVERSATION 1 — TRA CỨU ĐƠN THEO NGÀY TƯƠNG ĐỐI
+
+Kịch bản:
+User muốn kiểm tra đơn đi trễ của mình vào một ngày cụ thể nhưng diễn đạt bằng ngày tương đối, ví dụ "thứ 6 tuần sau".
+Agent phải bắt đầu phiên trước khi thực hiện tra cứu.
+Ngày user cung cấp phải được quy đổi sang ngày cụ thể thông qua calendar.
+Sau khi xác định được ngày, agent tra cứu danh sách đơn của user.
+Kết quả trả về có thể bao gồm nhiều đơn khác nhau.
+Agent chỉ xét các đơn đi trễ và tìm đơn có ngày khớp với ngày user hỏi.
+Nếu tìm thấy, trả lời các thông tin user quan tâm như ngày, số phút đi trễ, trạng thái, lý do, người duyệt hoặc nhận xét.
+Nếu không tìm thấy đơn phù hợp, thông báo không có đơn đi trễ vào ngày đó.
+User có thể hỏi tiếp về chính đơn vừa được tìm thấy, ví dụ "đơn đó duyệt chưa?", "tôi xin trễ bao nhiêu phút?", "lý do là gì?".
+
+Yêu cầu cần đạt:
+start_session phải là tool đầu tiên.
+Không hỏi user mã nhân viên hoặc danh tính.
+Với ngày tương đối như "thứ 6 tuần sau", bắt buộc gọi get_calendar.
+Không được tự tính hoặc tự suy luận ngày.
+Ngày dùng để đối chiếu phải lấy từ kết quả get_calendar.
+Phải gọi get_late_summary để tra cứu đơn hiện có.
+Chỉ sử dụng item có category = "late".
+Không sử dụng đơn nghỉ phép hoặc vắng mặt để trả lời.
+Phải đối chiếu fromDate của đơn đi trễ với ngày đã resolve.
+Nếu có nhiều đơn trong kết quả, không được chọn nhầm đơn khác ngày.
+Follow-up như "đơn đó" phải tham chiếu đúng đơn đã xác định ở lượt trước.
+Nếu user chỉ hỏi thêm thuộc tính của cùng đơn, không cần resolve ngày lại.
+Không gọi get_calendar lại nếu ngày đã được resolve và context không thay đổi.
+Không gọi bất kỳ tool tạo, gửi, sửa, thu hồi hoặc hủy đơn nào.
+Không hiển thị các ID/token nội bộ cho user.

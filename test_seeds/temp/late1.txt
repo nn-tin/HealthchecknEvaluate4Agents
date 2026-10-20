@@ -1,0 +1,36 @@
+CONVERSATION 1 — CREATE → SUBMIT → RECALL → EDIT → RESUBMIT
+
+Kịch bản:
+- User tạo một đơn đi trễ mới.
+- Ngày sử dụng cách nói tương đối như "thứ 6 tuần sau".
+- Thông tin có thể được cung cấp đầy đủ ngay hoặc lắc nhắc qua nhiều lượt.
+- Có thể thiếu số phút ở lượt đầu rồi bổ sung sau.
+- Khi đủ thông tin, preview đơn.
+- User xác nhận → tạo đơn thật.
+- User yêu cầu gửi duyệt.
+- Sau khi gửi thành công, user đổi ý và muốn sửa chính đơn vừa tạo, ví dụ đổi số phút hoặc ngày.
+- Vì đơn đang chờ duyệt, thực hiện flow thu hồi rồi sửa.
+- Sau khi sửa xong, user yêu cầu gửi duyệt lại.
+
+Yêu cầu cần đạt:
+- start_session phải là tool đầu tiên.
+- empId từ start_session phải được giữ và tái sử dụng xuyên suốt conversation.
+- ngày tương đối phải được resolve bằng get_calendar, không tự tính.
+- chỉ khi đủ thông tin mới gọi create_late_request(preview=true).
+- preview không được coi là đã tạo đơn.
+- user xác nhận preview → gọi lại create_late_request(preview=false) với đúng dữ liệu đã preview.
+- submitRef phải lấy từ create_late_request thành công.
+- không được hiển thị hoặc tự tạo submitRef.
+- submit_late_request phải sử dụng submitRef của chính đơn vừa tạo.
+
+Khi user muốn sửa:
+- phải sửa chính đơn được tạo trong conversation này.
+- không gọi get_late_summary để tìm một đơn khác.
+- nếu đơn đang chờ duyệt, phải xử lý recall trước khi edit.
+- recall_late_request phải dùng đúng submitRef của đơn vừa tạo.
+- edit_late_request phải tiếp tục dùng cùng submitRef.
+- chỉ gửi field user muốn thay đổi.
+- nếu đổi sang ngày tương đối mới → gọi get_calendar để resolve ngày mới.
+- dữ liệu mới phải override dữ liệu cũ.
+- sau khi sửa, nếu user yêu cầu gửi lại → submit_late_request với cùng submitRef.
+- không được create_late_request để "sửa" đơn.

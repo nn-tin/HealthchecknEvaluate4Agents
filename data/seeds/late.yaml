@@ -1,0 +1,74 @@
+{
+  "cases": [
+    {
+      "id": "late-lookup-relative-date-001",
+      "agent": "late",
+      "name": "Tra cứu đơn đi trễ theo ngày",
+      "tags": ["multi-turn", "read-only", "lookup", "relative-date", "context"],
+      "user_plan": {
+        "initial_message": "Thứ 6 tuần sau tôi có đơn đi trễ nào không?",
+        "intent": "Kiểm tra đơn đi trễ của mình vào thứ 6 tuần sau, sau đó hỏi tiếp trạng thái, số phút, lý do, người duyệt hoặc nhận xét của đúng đơn vừa tìm thấy.",
+        "follow_up_behavior": "Nếu tìm thấy đơn phù hợp, hỏi tiếp bằng cách nói 'Đơn đó duyệt chưa?', 'Tôi xin trễ bao nhiêu phút?' hoặc 'Lý do là gì?'. Nếu không tìm thấy thì chấp nhận thông báo và không yêu cầu thao tác ghi."
+      },
+      "expected": {
+        "outcome": "Agent mở phiên, resolve ngày tương đối bằng lịch hệ thống, tra cứu summary và chỉ trả lời từ đơn category='late' có fromDate khớp ngày user hỏi.",
+        "must": [
+          "start_session là tool đầu tiên",
+          "Không hỏi user mã nhân viên hoặc danh tính",
+          "Gọi get_calendar để resolve 'thứ 6 tuần sau' và không tự tính ngày",
+          "Ngày dùng để đối chiếu phải lấy từ kết quả get_calendar",
+          "Gọi get_late_summary để tra cứu đơn hiện có",
+          "Chỉ sử dụng item có category='late'",
+          "Đối chiếu fromDate của đơn đi trễ với ngày đã resolve",
+          "Nếu có nhiều đơn, chọn đúng đơn khớp ngày user hỏi",
+          "Follow-up như 'đơn đó' phải tham chiếu đúng đơn đã xác định ở lượt trước",
+          "Nếu user chỉ hỏi thêm thuộc tính của cùng đơn, không resolve ngày lại"
+        ],
+        "must_not": [
+          "Tự tính hoặc tự suy luận ngày tương đối",
+          "Dùng đơn nghỉ phép hoặc vắng mặt để trả lời",
+          "Chọn một đơn khác ngày khi summary có nhiều đơn",
+          "Gọi get_calendar lại khi ngày đã được resolve và context không thay đổi",
+          "Gọi tool tạo, gửi, sửa, thu hồi hoặc hủy đơn",
+          "Hiển thị ID hoặc token nội bộ"
+        ]
+      },
+      "limits": {"min_user_turns": 2, "max_turns": 10, "timeout_seconds": 120}
+    },
+    {
+      "id": "late-history-then-relative-date-001",
+      "agent": "late",
+      "name": "Tra cứu lịch sử rồi kiểm tra một ngày tương đối",
+      "tags": ["multi-turn", "read-only", "history", "relative-date", "context"],
+      "user_plan": {
+        "initial_message": "Tháng này tôi có những đơn đi trễ nào?",
+        "intent": "Tra cứu lịch sử đơn đi trễ trong tháng, hỏi thêm về kết quả, sau đó chuyển sang kiểm tra thứ 2 tuần sau và hỏi chi tiết đúng đơn vừa xác định.",
+        "follow_up_behavior": "Đầu tiên có thể hỏi số lần đi trễ, số phút hoặc trạng thái trong danh sách. Sau đó hỏi 'Còn thứ 2 tuần sau thì sao?'. Nếu xác định được đơn, tiếp tục hỏi 'Đơn đó bao nhiêu phút?', 'Ai duyệt?' hoặc 'Trạng thái hiện tại là gì?'."
+      },
+      "expected": {
+        "outcome": "Agent chỉ lọc các item đi trễ từ summary, resolve ngày tương đối mới bằng calendar và giữ đúng context cho các câu hỏi tiếp theo.",
+        "must": [
+          "start_session là tool đầu tiên và không gọi lại không cần thiết",
+          "Không hỏi user mã nhân viên hoặc danh tính",
+          "Yêu cầu tra cứu lịch sử phải gọi get_late_summary",
+          "Chỉ sử dụng item có category='late'",
+          "Nếu user hỏi số lần đi trễ, đếm trực tiếp các item category='late'",
+          "Diễn đạt trạng thái đơn bằng tiếng Việt",
+          "Khi user đưa ra ngày tương đối mới như 'thứ 2 tuần sau', gọi get_calendar",
+          "Ngày mới phải lấy từ kết quả get_calendar và override ngày đang được nói tới trước đó",
+          "Đối chiếu ngày mới với các đơn đi trễ, tái sử dụng context hiện có hoặc gọi lại get_late_summary khi cần",
+          "Follow-up phải tham chiếu đúng đơn vừa được xác định"
+        ],
+        "must_not": [
+          "Dùng item thuộc category khác để tính hoặc trả lời thông tin đơn đi trễ",
+          "Tự suy luận ngày dựa trên ngày hiện tại",
+          "Gọi get_calendar khi user chỉ hỏi thêm thông tin của cùng một đơn đã xác định",
+          "Gọi tool ngoài start_session, get_calendar và get_late_summary",
+          "Gọi tool tạo, gửi, sửa, thu hồi, hủy hoặc lookup nhân viên",
+          "Hiển thị ID hoặc token nội bộ"
+        ]
+      },
+      "limits": {"min_user_turns": 2, "max_turns": 10, "timeout_seconds": 120}
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+CONVERSATION 2 — KIỂM TRA PHÉP CÒN LẠI → TRA CỨU ĐƠN HIỆN CÓ
+Kịch bản:
+User hỏi số ngày phép hoặc các loại phép hiện có, ví dụ "tôi còn bao nhiêu ngày phép?".
+Agent phải bắt đầu session trước khi xử lý.
+Agent sử dụng entitlement lookup để lấy dữ liệu phép hiện tại.
+Agent trả lời số ngày hoặc loại phép đúng theo dữ liệu hệ thống, không tự tính.
+User tiếp tục hỏi "tôi đã có những đơn nghỉ nào?".
+Agent tra cứu danh sách đơn hiện có bằng summary.
+User có thể hỏi tiếp một câu như "có đơn nào đang chờ duyệt không?".
+Vì đây vẫn là câu hỏi về dữ liệu đơn, agent phải tra cứu summary trong chính lượt đó thay vì trả lời bằng dữ liệu đã nhớ.
+User sau đó có thể hỏi về ngày tương đối, ví dụ "còn thứ 2 tuần sau tôi có đơn nào không?".
+Agent resolve ngày bằng calendar rồi sử dụng summary để kiểm tra đơn tương ứng.
+Toàn bộ conversation chỉ thực hiện đọc dữ liệu, không thay đổi bất kỳ đơn nào.
+Yêu cầu cần đạt:
+start_session phải là tool đầu tiên.
+Không gọi lại start_session nếu session đã thành công.
+Không hỏi user mã nhân viên.
+Khi user hỏi số ngày phép hoặc loại phép, phải gọi get_leave_entitlement_lookup.
+Không tự cộng/trừ hoặc suy luận số ngày phép còn lại.
+Số phép trả lời user phải lấy từ kết quả tool.
+Khi user hỏi danh sách đơn, phải gọi get_leave_summary.
+Khi user tiếp tục hỏi trạng thái như "có đơn nào đang chờ duyệt không?", phải gọi get_leave_summary trong chính lượt đó.
+Không trả lời dữ liệu đơn bằng memory cũ của conversation.
+Khi xuất hiện ngày tương đối như "thứ 2 tuần sau", bắt buộc gọi get_calendar.
+Không tự tính ngày.
+Ngày phải được lấy từ kết quả get_calendar.
+Sau khi resolve ngày, dùng get_leave_summary để tìm đơn phù hợp.
+Context ngày mới phải thay thế ngày đang được nói tới trước đó.
+Không gọi bất kỳ write tool nào: create_leave, submit_leave, edit_leave, recall_leave, cancel_leave
+Không hiển thị identifier/token nội bộ.
