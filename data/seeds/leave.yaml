@@ -7,7 +7,7 @@
       "tags": ["multi-turn", "read-only", "summary", "relative-date", "context"],
       "user_plan": {
         "initial_message": "Tôi có những đơn nghỉ nào?",
-        "intent": "Xem các đơn nghỉ hiện có, sau đó kiểm tra thứ 6 tuần sau có đơn nào không và hỏi thêm trạng thái hoặc thông tin của đúng đơn vừa xác định.",
+        "intent": "Xem các đơn nghỉ hiện có, sau đó kiểm tra thứ 6 tuần sau có đơn nào không và hỏi thêm trạng thái hoặc thông tin của đúng đơn vừa xác định. Không yêu cầu tạo, sửa hoặc hủy đơn.",
         "follow_up_behavior": "Sau khi nhận danh sách, hỏi 'Thứ 6 tuần sau tôi có đơn nào không?'. Nếu tìm thấy đơn phù hợp, hỏi tiếp về trạng thái hoặc thông tin của đơn đó; không yêu cầu thay đổi đơn."
       },
       "expected": {
@@ -38,7 +38,7 @@
       "tags": ["multi-turn", "read-only", "entitlement", "summary", "relative-date"],
       "user_plan": {
         "initial_message": "Tôi còn bao nhiêu ngày phép?",
-        "intent": "Kiểm tra số ngày hoặc loại phép hiện có, xem danh sách đơn nghỉ, kiểm tra đơn đang chờ duyệt, rồi kiểm tra đơn vào thứ 2 tuần sau mà không thay đổi dữ liệu.",
+        "intent": "Kiểm tra số ngày hoặc loại phép hiện có, xem danh sách đơn nghỉ, kiểm tra đơn đang chờ duyệt, rồi kiểm tra đơn vào thứ 2 tuần. Không yêu cầu tạo, sửa hoặc hủy đơn.",
         "follow_up_behavior": "Sau câu trả lời về phép còn lại, hỏi 'Tôi đã có những đơn nghỉ nào?'. Tiếp tục hỏi 'Có đơn nào đang chờ duyệt không?', rồi hỏi 'Còn thứ 2 tuần sau tôi có đơn nào không?'."
       },
       "expected": {

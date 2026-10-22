@@ -1,0 +1,12 @@
+.env
+.venv
+__pycache__
+**/__pycache__
+.pytest_cache
+.deepeval
+data/runs
+data/logs
+data/generated
+.git
+observability/.env
+observability/.env.*

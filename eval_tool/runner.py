@@ -15,8 +15,9 @@ from .models import (
     EvaluationSummary,
     HealthcheckResult,
     TranscriptTurn,
+    TraceSummary,
 )
-from .report import save_case_run, save_healthcheck
+from .result_sink import ResultSink, build_sink
 from .time_utils import SAIGON_TZ
 from .user_simulator import UserSimulator
 
@@ -37,11 +38,13 @@ class EvaluationRunner:
         simulator: UserSimulator | None = None,
         evaluator: Evaluator | None = None,
         dify_factory: Callable[[str], DifyClient] | None = None,
+        result_sink: ResultSink | None = None,
     ):
         self.config = config
         self.simulator = simulator
         self.evaluator = evaluator
         self.dify_factory = dify_factory or self._default_dify_factory
+        self.result_sink = result_sink or build_sink(config)
 
     def _default_dify_factory(self, agent_id: str) -> DifyClient:
         agent = self.config.get_agent(agent_id)
@@ -51,16 +54,25 @@ class EvaluationRunner:
             read_timeout=agent.timeout_seconds,
         )
 
-    def healthcheck(self, agent_id: str) -> HealthcheckResult:
+    def healthcheck(self, agent_id: str, *, batch_id: str | None = None,
+                    scheduled_for: str | None = None) -> HealthcheckResult:
         run_id = _run_id("health")
         agent = self.config.get_agent(agent_id)
-        client = self.dify_factory(agent_id)
-        turn = client.send_message(
-            agent.healthcheck_probe,
-            inputs=self.config.resolved_inputs(agent_id),
-            user=f"healthcheck-{run_id}-{agent_id}",
-        )
-        if turn.error:
+        started_at, started = _now(), time.perf_counter()
+        try:
+            client = self.dify_factory(agent_id)
+            turn = client.send_message(
+                agent.healthcheck_probe,
+                inputs=self.config.resolved_inputs(agent_id),
+                user=f"healthcheck-{run_id}-{agent_id}",
+            )
+        except Exception as exc:
+            turn = DifyTurnResult(
+                error=f"{type(exc).__name__}: healthcheck request failed",
+                trace=TraceSummary(request_started_at=started_at.isoformat(),
+                                   total_duration_ms=round((time.perf_counter() - started) * 1000, 3)),
+            )
+        if turn.error or not turn.trace.stream_complete or not turn.answer.strip():
             status = "Error"
         elif turn.trace.total_duration_ms > self.config.slow_threshold_seconds * 1000:
             status = "Slow"
@@ -72,21 +84,28 @@ class EvaluationRunner:
             checked_at=_now().isoformat(),
             status=status,
             answer=turn.answer,
-            error=turn.error,
+            error=turn.error or ("Incomplete stream or empty answer" if status == "Error" else None),
             trace=turn.trace,
             events=turn.raw_events,
+            environment=self.config.environment,
+            batch_id=batch_id,
+            trigger="scheduled" if batch_id else "manual",
+            scheduled_for=scheduled_for,
+            conversation_id=turn.conversation_id,
+            dify_log_url=self.config.dify_log_url(agent_id, turn.conversation_id),
         )
-        save_healthcheck(result, self.config.runs_dir)
+        self.result_sink.save(result)
         return result
 
-    def run_case(self, case: EvaluationCase) -> CaseRunResult:
+    def run_case(self, case: EvaluationCase, *, batch_id: str | None = None,
+                 scheduled_for: str | None = None) -> CaseRunResult:
         if self.simulator is None or self.evaluator is None:
             raise RuntimeError("Simulator and evaluator are required to run evaluation cases")
         run_id = _run_id(case.agent)
         started_at = _now()
         started = time.perf_counter()
         agent = self.config.get_agent(case.agent)
-        client = self.dify_factory(case.agent)
+        client = None
         transcript: list[TranscriptTurn] = []
         all_events = []
         traces = []
@@ -98,12 +117,22 @@ class EvaluationRunner:
         while user_turns < case.limits.max_turns:
             transcript.append(TranscriptTurn(role="user", content=next_message))
             user_turns += 1
-            turn = client.send_message(
-                next_message,
-                conversation_id=conversation_id,
-                inputs=self.config.resolved_inputs(case.agent),
-                user=f"evaluation-{run_id}-{case.id}",
-            )
+            request_at, request_start = _now(), time.perf_counter()
+            try:
+                if client is None:
+                    client = self.dify_factory(case.agent)
+                turn = client.send_message(
+                    next_message,
+                    conversation_id=conversation_id,
+                    inputs=self.config.resolved_inputs(case.agent),
+                    user=f"evaluation-{run_id}-{case.id}",
+                )
+            except Exception as exc:
+                turn = DifyTurnResult(
+                    error=f"{type(exc).__name__}: evaluation request failed",
+                    trace=TraceSummary(request_started_at=request_at.isoformat(),
+                                       total_duration_ms=round((time.perf_counter()-request_start)*1000, 3)),
+                )
             conversation_id = turn.conversation_id or conversation_id
             all_events.extend(turn.raw_events)
             traces.append(turn.trace)
@@ -132,7 +161,10 @@ class EvaluationRunner:
             evaluation = EvaluationSummary(verdict="ERROR", error=run_error)
             status = "error"
         else:
-            evaluation = self.evaluator.evaluate(case, agent, transcript, traces)
+            try:
+                evaluation = self.evaluator.evaluate(case, agent, transcript, traces)
+            except Exception as exc:
+                evaluation = EvaluationSummary(verdict="ERROR", error=f"{type(exc).__name__}: evaluator failed")
             status = "completed" if evaluation.verdict != "ERROR" else "error"
 
         finished_at = _now()
@@ -144,16 +176,23 @@ class EvaluationRunner:
             finished_at=finished_at.isoformat(),
             duration_seconds=round(time.perf_counter() - started, 3),
             status=status,
+            environment=self.config.environment,
             transcript=transcript,
             events=all_events,
             traces=traces,
             evaluation=evaluation,
+            batch_id=batch_id,
+            trigger="scheduled" if batch_id else "manual",
+            scheduled_for=scheduled_for,
+            conversation_id=conversation_id,
+            dify_log_url=self.config.dify_log_url(case.agent, conversation_id),
         )
-        save_case_run(result, self.config.runs_dir)
+        self.result_sink.save(result)
         return result
 
-    def run_cases(self, cases: list[EvaluationCase]) -> list[CaseRunResult]:
-        return [self.run_case(case) for case in cases]
+    def run_cases(self, cases: list[EvaluationCase], *, batch_id: str | None = None,
+                  scheduled_for: str | None = None) -> list[CaseRunResult]:
+        return [self.run_case(case, batch_id=batch_id, scheduled_for=scheduled_for) for case in cases]
 
 
 def _assistant_turn(result: DifyTurnResult) -> TranscriptTurn:

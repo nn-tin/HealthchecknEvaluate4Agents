@@ -1,0 +1,589 @@
+{
+  "apiVersion": 1,
+  "groups": [
+    {
+      "orgId": 1,
+      "name": "TicketAgents checks",
+      "folder": "TicketAgents",
+      "interval": "1m",
+      "rules": [
+        {
+          "uid": "ta-missing-batch",
+          "title": "Scheduled batch missing or incomplete",
+          "condition": "C",
+          "for": "1m",
+          "noDataState": "OK",
+          "execErrState": "Error",
+          "isPaused": false,
+          "annotations": {
+            "summary": "A scheduled batch is overdue or does not contain all configured agents."
+          },
+          "labels": {
+            "project": "ticketagents"
+          },
+          "data": [
+            {
+              "refId": "A",
+              "relativeTimeRange": {
+                "from": 600,
+                "to": 0
+              },
+              "datasourceUid": "ticketagents-postgres",
+              "model": {
+                "refId": "A",
+                "datasource": {
+                  "type": "postgres",
+                  "uid": "ticketagents-postgres"
+                },
+                "rawQuery": true,
+                "rawSql": "SELECT now() AS time,s.environment AS series, CASE WHEN EXISTS (SELECT 1 FROM expected_batches e LEFT JOIN batch_progress b ON b.environment=e.environment AND b.scheduled_for=e.scheduled_for WHERE e.environment=s.environment AND e.scheduled_for >= date_trunc('day',now() AT TIME ZONE s.timezone) AT TIME ZONE s.timezone AND e.scheduled_for+e.grace_minutes*interval '1 minute' < now() AND (b.batch_id IS NULL OR b.finished_at IS NULL OR b.completed_agents<b.expected_count OR b.status<>'completed')) THEN 1 ELSE 0 END::double precision AS value FROM schedule_settings s",
+                "format": "time_series",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200
+              }
+            },
+            {
+              "refId": "B",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "refId": "B",
+                "type": "reduce",
+                "expression": "A",
+                "reducer": "last",
+                "datasource": {
+                  "type": "__expr__",
+                  "uid": "__expr__"
+                },
+                "conditions": []
+              }
+            },
+            {
+              "refId": "C",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "refId": "C",
+                "type": "threshold",
+                "expression": "B",
+                "datasource": {
+                  "type": "__expr__",
+                  "uid": "__expr__"
+                },
+                "conditions": [
+                  {
+                    "type": "query",
+                    "query": {
+                      "params": [
+                        "C"
+                      ]
+                    },
+                    "reducer": {
+                      "type": "last",
+                      "params": []
+                    },
+                    "evaluator": {
+                      "type": "gt",
+                      "params": [
+                        0
+                      ]
+                    },
+                    "operator": {
+                      "type": "and"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "uid": "ta-agent-error",
+          "title": "Latest healthcheck is Error",
+          "condition": "C",
+          "for": "1m",
+          "noDataState": "OK",
+          "execErrState": "Error",
+          "isPaused": false,
+          "annotations": {
+            "summary": "Latest healthcheck failed. Open Agent Health Overview for details."
+          },
+          "labels": {
+            "project": "ticketagents"
+          },
+          "data": [
+            {
+              "refId": "A",
+              "relativeTimeRange": {
+                "from": 600,
+                "to": 0
+              },
+              "datasourceUid": "ticketagents-postgres",
+              "model": {
+                "refId": "A",
+                "datasource": {
+                  "type": "postgres",
+                  "uid": "ticketagents-postgres"
+                },
+                "rawQuery": true,
+                "rawSql": "SELECT now() AS time,environment||'/'||agent AS series,CASE WHEN status='Error' THEN 1 ELSE 0 END::double precision AS value FROM (SELECT DISTINCT ON(environment,agent) environment,agent,status FROM runs WHERE kind='healthcheck' AND started_at>now()-interval '24 hours' ORDER BY environment,agent,started_at DESC) latest",
+                "format": "time_series",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200
+              }
+            },
+            {
+              "refId": "B",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "refId": "B",
+                "type": "reduce",
+                "expression": "A",
+                "reducer": "last",
+                "datasource": {
+                  "type": "__expr__",
+                  "uid": "__expr__"
+                },
+                "conditions": []
+              }
+            },
+            {
+              "refId": "C",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "refId": "C",
+                "type": "threshold",
+                "expression": "B",
+                "datasource": {
+                  "type": "__expr__",
+                  "uid": "__expr__"
+                },
+                "conditions": [
+                  {
+                    "type": "query",
+                    "query": {
+                      "params": [
+                        "C"
+                      ]
+                    },
+                    "reducer": {
+                      "type": "last",
+                      "params": []
+                    },
+                    "evaluator": {
+                      "type": "gt",
+                      "params": [
+                        0
+                      ]
+                    },
+                    "operator": {
+                      "type": "and"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "uid": "ta-slow-agent",
+          "title": "Two consecutive slow healthchecks",
+          "condition": "C",
+          "for": "1m",
+          "noDataState": "OK",
+          "execErrState": "Error",
+          "isPaused": false,
+          "annotations": {
+            "summary": "The two latest healthchecks exceeded HEALTHCHECK_SLOW_SECONDS."
+          },
+          "labels": {
+            "project": "ticketagents"
+          },
+          "data": [
+            {
+              "refId": "A",
+              "relativeTimeRange": {
+                "from": 600,
+                "to": 0
+              },
+              "datasourceUid": "ticketagents-postgres",
+              "model": {
+                "refId": "A",
+                "datasource": {
+                  "type": "postgres",
+                  "uid": "ticketagents-postgres"
+                },
+                "rawQuery": true,
+                "rawSql": "WITH ranked AS (SELECT environment,agent,status,row_number() OVER(PARTITION BY environment,agent ORDER BY started_at DESC) AS rn FROM runs WHERE kind='healthcheck' AND started_at>now()-interval '7 days') SELECT now() AS time,environment||'/'||agent AS series,CASE WHEN count(*)=2 AND bool_and(status='Slow') THEN 1 ELSE 0 END::double precision AS value FROM ranked WHERE rn<=2 GROUP BY environment,agent",
+                "format": "time_series",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200
+              }
+            },
+            {
+              "refId": "B",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "refId": "B",
+                "type": "reduce",
+                "expression": "A",
+                "reducer": "last",
+                "datasource": {
+                  "type": "__expr__",
+                  "uid": "__expr__"
+                },
+                "conditions": []
+              }
+            },
+            {
+              "refId": "C",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "refId": "C",
+                "type": "threshold",
+                "expression": "B",
+                "datasource": {
+                  "type": "__expr__",
+                  "uid": "__expr__"
+                },
+                "conditions": [
+                  {
+                    "type": "query",
+                    "query": {
+                      "params": [
+                        "C"
+                      ]
+                    },
+                    "reducer": {
+                      "type": "last",
+                      "params": []
+                    },
+                    "evaluator": {
+                      "type": "gt",
+                      "params": [
+                        0
+                      ]
+                    },
+                    "operator": {
+                      "type": "and"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "uid": "ta-eval-error",
+          "title": "Evaluation ERROR in last 24 hours",
+          "condition": "C",
+          "for": "1m",
+          "noDataState": "OK",
+          "execErrState": "Error",
+          "isPaused": false,
+          "annotations": {
+            "summary": "An evaluation could not complete or be scored in the last 24 hours."
+          },
+          "labels": {
+            "project": "ticketagents"
+          },
+          "data": [
+            {
+              "refId": "A",
+              "relativeTimeRange": {
+                "from": 600,
+                "to": 0
+              },
+              "datasourceUid": "ticketagents-postgres",
+              "model": {
+                "refId": "A",
+                "datasource": {
+                  "type": "postgres",
+                  "uid": "ticketagents-postgres"
+                },
+                "rawQuery": true,
+                "rawSql": "SELECT now() AS time,environment||'/'||agent AS series,CASE WHEN count(*) FILTER(WHERE verdict='ERROR')>0 THEN 1 ELSE 0 END::double precision AS value FROM runs WHERE kind='evaluation' AND started_at>now()-interval '24 hours' GROUP BY environment,agent",
+                "format": "time_series",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200
+              }
+            },
+            {
+              "refId": "B",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "refId": "B",
+                "type": "reduce",
+                "expression": "A",
+                "reducer": "last",
+                "datasource": {
+                  "type": "__expr__",
+                  "uid": "__expr__"
+                },
+                "conditions": []
+              }
+            },
+            {
+              "refId": "C",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "refId": "C",
+                "type": "threshold",
+                "expression": "B",
+                "datasource": {
+                  "type": "__expr__",
+                  "uid": "__expr__"
+                },
+                "conditions": [
+                  {
+                    "type": "query",
+                    "query": {
+                      "params": [
+                        "C"
+                      ]
+                    },
+                    "reducer": {
+                      "type": "last",
+                      "params": []
+                    },
+                    "evaluator": {
+                      "type": "gt",
+                      "params": [
+                        0
+                      ]
+                    },
+                    "operator": {
+                      "type": "and"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "uid": "ta-pass-rate",
+          "title": "Evaluation pass rate below 80 percent",
+          "condition": "C",
+          "for": "1m",
+          "noDataState": "OK",
+          "execErrState": "Error",
+          "isPaused": false,
+          "annotations": {
+            "summary": "PASS rate is below 80% in the last 7 days (minimum 5 samples)."
+          },
+          "labels": {
+            "project": "ticketagents"
+          },
+          "data": [
+            {
+              "refId": "A",
+              "relativeTimeRange": {
+                "from": 600,
+                "to": 0
+              },
+              "datasourceUid": "ticketagents-postgres",
+              "model": {
+                "refId": "A",
+                "datasource": {
+                  "type": "postgres",
+                  "uid": "ticketagents-postgres"
+                },
+                "rawQuery": true,
+                "rawSql": "SELECT now() AS time,environment||'/'||agent AS series,CASE WHEN count(*)>=5 AND count(*) FILTER(WHERE verdict='PASS')::float/count(*)<0.8 THEN 1 ELSE 0 END::double precision AS value FROM runs WHERE kind='evaluation' AND started_at>now()-interval '7 days' GROUP BY environment,agent",
+                "format": "time_series",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200
+              }
+            },
+            {
+              "refId": "B",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "refId": "B",
+                "type": "reduce",
+                "expression": "A",
+                "reducer": "last",
+                "datasource": {
+                  "type": "__expr__",
+                  "uid": "__expr__"
+                },
+                "conditions": []
+              }
+            },
+            {
+              "refId": "C",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "refId": "C",
+                "type": "threshold",
+                "expression": "B",
+                "datasource": {
+                  "type": "__expr__",
+                  "uid": "__expr__"
+                },
+                "conditions": [
+                  {
+                    "type": "query",
+                    "query": {
+                      "params": [
+                        "C"
+                      ]
+                    },
+                    "reducer": {
+                      "type": "last",
+                      "params": []
+                    },
+                    "evaluator": {
+                      "type": "gt",
+                      "params": [
+                        0
+                      ]
+                    },
+                    "operator": {
+                      "type": "and"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "uid": "ta-missing-evaluation-batch",
+          "title": "Scheduled evaluation batch missing or incomplete",
+          "condition": "C",
+          "for": "1m",
+          "noDataState": "OK",
+          "execErrState": "Error",
+          "isPaused": false,
+          "annotations": {
+            "summary": "A scheduled evaluation batch is overdue or does not contain all configured cases."
+          },
+          "labels": {
+            "project": "ticketagents"
+          },
+          "data": [
+            {
+              "refId": "A",
+              "relativeTimeRange": {
+                "from": 600,
+                "to": 0
+              },
+              "datasourceUid": "ticketagents-postgres",
+              "model": {
+                "refId": "A",
+                "datasource": {
+                  "type": "postgres",
+                  "uid": "ticketagents-postgres"
+                },
+                "rawQuery": true,
+                "rawSql": "SELECT now() AS time,s.environment AS series,CASE WHEN EXISTS (SELECT 1 FROM expected_evaluation_batches e LEFT JOIN evaluation_batch_progress b ON b.environment=e.environment AND b.scheduled_for=e.scheduled_for WHERE e.environment=s.environment AND e.scheduled_for >= date_trunc('day',now() AT TIME ZONE s.timezone) AT TIME ZONE s.timezone AND e.scheduled_for+e.grace_minutes*interval '1 minute' < now() AND (b.batch_id IS NULL OR b.finished_at IS NULL OR b.completed_cases<b.expected_count OR b.status<>'completed')) THEN 1 ELSE 0 END::double precision AS value FROM evaluation_schedule_settings s",
+                "format": "time_series",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200
+              }
+            },
+            {
+              "refId": "B",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "refId": "B",
+                "type": "reduce",
+                "expression": "A",
+                "reducer": "last",
+                "datasource": {
+                  "type": "__expr__",
+                  "uid": "__expr__"
+                },
+                "conditions": []
+              }
+            },
+            {
+              "refId": "C",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "refId": "C",
+                "type": "threshold",
+                "expression": "B",
+                "datasource": {
+                  "type": "__expr__",
+                  "uid": "__expr__"
+                },
+                "conditions": [
+                  {
+                    "type": "query",
+                    "query": {
+                      "params": [
+                        "C"
+                      ]
+                    },
+                    "reducer": {
+                      "type": "last",
+                      "params": []
+                    },
+                    "evaluator": {
+                      "type": "gt",
+                      "params": [
+                        0
+                      ]
+                    },
+                    "operator": {
+                      "type": "and"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

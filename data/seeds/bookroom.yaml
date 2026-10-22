@@ -7,7 +7,7 @@
       "tags": ["multi-turn", "read-only", "calendar", "list-events", "relative-date"],
       "user_plan": {
         "initial_message": "Mai tôi có lịch gì?",
-        "intent": "Xem lịch của mình vào ngày mai, sau đó tiếp tục xem lịch vào thứ 6 tuần sau mà không tạo, sửa hoặc hủy lịch.",
+        "intent": "Xem lịch của mình vào ngày mai, sau đó tiếp tục xem lịch vào thứ 6 tuần sau. Không yêu cầu tạo, sửa hoặc hủy lịch.",
         "follow_up_behavior": "Sau khi agent trả lịch ngày mai, hỏi 'Còn thứ 6 tuần sau thì sao?'. Có thể hỏi thêm về một lịch vừa xuất hiện trong kết quả nhưng chỉ tra cứu, không yêu cầu thay đổi lịch."
       },
       "expected": {
@@ -39,7 +39,7 @@
       "tags": ["multi-turn", "read-only", "availability", "participant", "room", "relative-date"],
       "user_plan": {
         "initial_message": "Thứ 5 tuần sau từ 14h đến 15h Daniel có rảnh không?",
-        "intent": "Kiểm tra Daniel bận hay rảnh trong khung 14h–15h thứ 5 tuần sau, sau đó tìm các phòng trống trong đúng khung giờ đó mà không tạo meeting.",
+        "intent": "Kiểm tra Daniel bận hay rảnh trong khung 14h–15h thứ 5 tuần sau, sau đó tìm các phòng trống trong đúng khung giờ đó. Không yêu cầu tạo, sửa hoặc hủy lịch.",
         "follow_up_behavior": "Sau khi nhận kết quả bận/rảnh của Daniel, hỏi 'Khung giờ đó có phòng nào trống không?'. Có thể hỏi lại về phòng hoặc availability nhưng không yêu cầu đặt lịch."
       },
       "expected": {

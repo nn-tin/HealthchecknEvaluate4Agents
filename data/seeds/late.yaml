@@ -7,7 +7,7 @@
       "tags": ["multi-turn", "read-only", "lookup", "relative-date", "context"],
       "user_plan": {
         "initial_message": "Thứ 6 tuần sau tôi có đơn đi trễ nào không?",
-        "intent": "Kiểm tra đơn đi trễ của mình vào thứ 6 tuần sau, sau đó hỏi tiếp trạng thái, số phút, lý do, người duyệt hoặc nhận xét của đúng đơn vừa tìm thấy.",
+        "intent": "Kiểm tra đơn đi trễ của mình vào thứ 6 tuần sau, sau đó hỏi tiếp trạng thái, số phút, lý do, người duyệt hoặc nhận xét của đúng đơn vừa tìm thấy. Không yêu cầu tạo, sửa hoặc hủy đơn",
         "follow_up_behavior": "Nếu tìm thấy đơn phù hợp, hỏi tiếp bằng cách nói 'Đơn đó duyệt chưa?', 'Tôi xin trễ bao nhiêu phút?' hoặc 'Lý do là gì?'. Nếu không tìm thấy thì chấp nhận thông báo và không yêu cầu thao tác ghi."
       },
       "expected": {
@@ -42,7 +42,7 @@
       "tags": ["multi-turn", "read-only", "history", "relative-date", "context"],
       "user_plan": {
         "initial_message": "Tháng này tôi có những đơn đi trễ nào?",
-        "intent": "Tra cứu lịch sử đơn đi trễ trong tháng, hỏi thêm về kết quả, sau đó chuyển sang kiểm tra thứ 2 tuần sau và hỏi chi tiết đúng đơn vừa xác định.",
+        "intent": "Tra cứu lịch sử đơn đi trễ trong tháng, hỏi thêm về kết quả, sau đó chuyển sang kiểm tra thứ 2 tuần sau và hỏi chi tiết đúng đơn vừa xác định. Không yêu cầu tạo, sửa hoặc hủy đơn.",
         "follow_up_behavior": "Đầu tiên có thể hỏi số lần đi trễ, số phút hoặc trạng thái trong danh sách. Sau đó hỏi 'Còn thứ 2 tuần sau thì sao?'. Nếu xác định được đơn, tiếp tục hỏi 'Đơn đó bao nhiêu phút?', 'Ai duyệt?' hoặc 'Trạng thái hiện tại là gì?'."
       },
       "expected": {

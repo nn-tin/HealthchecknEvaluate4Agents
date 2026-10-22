@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import os
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -39,8 +41,16 @@ def dump_data(data: Any, path: str | Path) -> Path:
 def dump_json(data: Any, path: str | Path) -> Path:
     target = Path(path)
     target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(
-        json.dumps(data, ensure_ascii=False, indent=2, default=str),
-        encoding="utf-8",
-    )
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=target.parent,
+                                         prefix=".run-", suffix=".tmp", delete=False) as stream:
+            temporary = Path(stream.name)
+            json.dump(data, stream, ensure_ascii=False, indent=2, default=str)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, target)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
     return target

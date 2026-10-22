@@ -15,6 +15,7 @@ class AgentConfig(BaseModel):
     agent_id: str
     display_name: str
     api_key_env: str
+    app_link_env: str = ""
     prompt_file: str
     chatbot_role: str
     relevant_topics: list[str] = Field(default_factory=list)
@@ -170,6 +171,12 @@ class CaseRunResult(BaseModel):
     traces: list[TraceSummary]
     evaluation: EvaluationSummary
     result_file: str | None = None
+    batch_id: str | None = None
+    trigger: Literal["manual", "scheduled"] = "manual"
+    scheduled_for: str | None = None
+    environment: str | None = None
+    conversation_id: str = ""
+    dify_log_url: str = ""
 
 
 class HealthcheckResult(BaseModel):
@@ -182,6 +189,12 @@ class HealthcheckResult(BaseModel):
     trace: TraceSummary
     events: list[RawEvent] = Field(default_factory=list)
     result_file: str | None = None
+    batch_id: str | None = None
+    trigger: Literal["manual", "scheduled"] = "manual"
+    scheduled_for: str | None = None
+    environment: str | None = None
+    conversation_id: str = ""
+    dify_log_url: str = ""
 
 
 class GeneratedCaseBatch(BaseModel):

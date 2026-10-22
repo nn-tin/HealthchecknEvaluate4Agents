@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
-import subprocess
+import logging
 import sys
 from pathlib import Path
 
@@ -20,7 +20,13 @@ def build_parser() -> argparse.ArgumentParser:
         description="TicketAgents healthcheck and multi-turn evaluation MVP"
     )
     sub = parser.add_subparsers(dest="command", required=True)
-    sub.add_parser("ui", help="Start the Streamlit UI")
+    scheduler = sub.add_parser("scheduler", help="Run scheduled healthchecks")
+    scheduler.add_argument("--once", action="store_true", help="Check due schedules once, then exit")
+    evaluation_scheduler = sub.add_parser("evaluation-scheduler", help="Run scheduled evaluation cases")
+    evaluation_scheduler.add_argument("--once", action="store_true", help="Check due schedules once, then exit")
+    sub.add_parser("db-init", help="Create/update PostgreSQL schema")
+    backfill = sub.add_parser("backfill", help="Import local JSON results into PostgreSQL")
+    backfill.add_argument("--runs-dir", default=str(ROOT / "data" / "runs"))
 
     health = sub.add_parser("healthcheck", help="Run healthcheck probes")
     health.add_argument(
@@ -46,28 +52,31 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main() -> int:
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     args = build_parser().parse_args()
-    if args.command == "ui":
-        try:
-            import streamlit  # noqa: F401
-        except ModuleNotFoundError:
-            print(
-                "Streamlit is not installed. Run: pip install -r requirements.txt",
-                file=sys.stderr,
-            )
-            return 2
-        return subprocess.call(
-            [
-                sys.executable,
-                "-m",
-                "streamlit",
-                "run",
-                str(ROOT / "eval_tool" / "app.py"),
-            ],
-            cwd=ROOT,
-        )
-
     config = load_config(ROOT)
+    if args.command in {"db-init", "backfill", "scheduler", "evaluation-scheduler"}:
+        try:
+            from eval_tool.db import migrate
+            if args.command == "scheduler":
+                from eval_tool.scheduler import HealthcheckScheduler
+                HealthcheckScheduler(config).serve(once=args.once)
+                return 0
+            if args.command == "evaluation-scheduler":
+                from eval_tool.scheduler import EvaluationScheduler
+                EvaluationScheduler(config).serve(once=args.once)
+                return 0
+            migrate(config.database_url, ROOT)
+            if args.command == "backfill":
+                from eval_tool.backfill import backfill
+                saved, failed = backfill(config, Path(args.runs_dir))
+                print(f"Imported={saved} failed={failed}")
+                return 1 if failed else 0
+            print("Database schema ready")
+            return 0
+        except Exception as exc:
+            print(f"{type(exc).__name__}: operation failed; check database and schedule configuration", file=sys.stderr)
+            return 1
     if args.command == "healthcheck":
         runner = EvaluationRunner(config)
         agent_ids = list(config.agents) if args.agent == "all" else [args.agent]

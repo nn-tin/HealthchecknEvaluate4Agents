@@ -37,3 +37,20 @@ def load_cases(path: str | Path) -> list[EvaluationCase]:
     if isinstance(raw, list):
         raw = {"cases": raw}
     return CaseCollection.model_validate(raw).cases
+
+
+def load_agent_cases(config: AppConfig, agent_ids: list[str]) -> list[EvaluationCase]:
+    """Load every configured seed case for the requested agents."""
+    cases: list[EvaluationCase] = []
+    for agent_id in agent_ids:
+        source = config.project_root / "data" / "seeds" / f"{agent_id}.yaml"
+        if not source.is_file():
+            raise ValueError(f"Missing evaluation cases for {agent_id}: {source}")
+        agent_cases = [case for case in load_cases(source) if case.agent == agent_id]
+        if not agent_cases:
+            raise ValueError(f"No evaluation cases for agent {agent_id} in {source}")
+        cases.extend(agent_cases)
+    ids = [case.id for case in cases]
+    if len(ids) != len(set(ids)):
+        raise ValueError("Evaluation case IDs must be unique")
+    return cases

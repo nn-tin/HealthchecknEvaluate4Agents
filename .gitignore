@@ -4,4 +4,6 @@ __pycache__/
 data/runs/*.json
 data/generated/*.yaml
 .streamlit/
+observability/.env
+scheduler-heartbeat
 .deepeval/

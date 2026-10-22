@@ -5,4 +5,5 @@ pydantic>=2.10
 python-dotenv>=1.0
 requests>=2.31
 PyYAML>=6.0
-streamlit>=1.40
+psycopg[binary]>=3.2,<4
+tzdata>=2025.1

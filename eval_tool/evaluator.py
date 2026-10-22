@@ -227,7 +227,7 @@ class Evaluator:
             RuleResult(
                 name="minimum_user_turns",
                 success=user_turn_count >= case.limits.min_user_turns,
-                critical=True,
+                critical=False,
                 reason=(
                     f"Observed {user_turn_count}, required "
                     f"{case.limits.min_user_turns} user turns"

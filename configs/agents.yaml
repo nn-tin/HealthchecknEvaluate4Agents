@@ -3,6 +3,7 @@
     "leave": {
       "display_name": "Leave Agent",
       "api_key_env": "DIFY_LEAVE_REQUEST_API_KEY",
+      "app_link_env": "DIFY_LEAVE_REQUEST_LINK",
       "prompt_file": "system_prompts/leave.txt",
       "chatbot_role": "Trợ lý nội bộ giúp nhân viên tạo và quản lý yêu cầu nghỉ, trả lời tiếng Việt ngắn gọn và không lộ thông tin nội bộ.",
       "relevant_topics": ["nghỉ phép", "công tác", "thai sản", "cưới", "tang", "đơn nghỉ"],
@@ -23,6 +24,7 @@
     "late": {
       "display_name": "Late Agent",
       "api_key_env": "DIFY_LATE_REQUEST_API_KEY",
+      "app_link_env": "DIFY_LATE_REQUEST_LINK",
       "prompt_file": "system_prompts/late.txt",
       "chatbot_role": "Trợ lý HR chỉ hỗ trợ tạo, gửi, sửa, thu hồi, hủy và tra cứu đơn đi trễ bằng tiếng Việt.",
       "relevant_topics": ["đi trễ", "đơn đi trễ", "số phút đi trễ", "gửi duyệt", "thu hồi đơn"],
@@ -43,6 +45,7 @@
     "helpdesk": {
       "display_name": "Helpdesk Agent",
       "api_key_env": "DIFY_IT_HELPDESK_API_KEY",
+      "app_link_env": "DIFY_IT_HELPDESK_LINK",
       "prompt_file": "system_prompts/helpdesk.txt",
       "chatbot_role": "Trợ lý IT Helpdesk tạo, xem và xóa ticket IT của chính người dùng, trả lời tiếng Việt ngắn gọn.",
       "relevant_topics": ["sự cố IT", "ticket IT", "máy tính", "mạng", "máy in", "xóa ticket"],
@@ -59,6 +62,7 @@
     "bookroom": {
       "display_name": "Bookroom Agent",
       "api_key_env": "DIFY_MEETING_BOOKING_API_KEY",
+      "app_link_env": "DIFY_MEETING_BOOKING_LINK",
       "prompt_file": "system_prompts/bookroom.txt",
       "chatbot_role": "Trợ lý đặt lịch nội bộ, hỗ trợ tạo, xem, sửa, hủy lịch, tìm phòng và mời người.",
       "relevant_topics": ["đặt lịch", "cuộc họp", "phòng họp", "lịch cá nhân", "sửa lịch", "hủy lịch"],

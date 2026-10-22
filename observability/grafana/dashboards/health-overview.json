@@ -1,0 +1,2675 @@
+{
+  "uid": "ta-health",
+  "title": "Agent Health Overview",
+  "schemaVersion": 39,
+  "version": 47,
+  "timezone": "Asia/Ho_Chi_Minh",
+  "refresh": "30s",
+  "time": {
+    "from": "now-7d",
+    "to": "now"
+  },
+  "tags": [
+    "ticketagents"
+  ],
+  "editable": false,
+  "templating": {
+    "list": [
+      {
+        "name": "environment",
+        "label": "Environment",
+        "type": "query",
+        "datasource": {
+          "type": "postgres",
+          "uid": "ticketagents-postgres"
+        },
+        "query": "SELECT DISTINCT environment FROM runs UNION SELECT environment FROM schedule_settings ORDER BY 1",
+        "refresh": 1,
+        "multi": true,
+        "includeAll": true,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        }
+      },
+      {
+        "name": "agent",
+        "label": "Agent",
+        "type": "custom",
+        "query": "leave,late,helpdesk,bookroom",
+        "multi": true,
+        "includeAll": true,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        }
+      }
+    ]
+  },
+  "links": [
+    {
+      "title": "Health",
+      "url": "/d/ta-health"
+    },
+    {
+      "title": "Evaluation",
+      "url": "/d/ta-quality"
+    },
+    {
+      "title": "Latest Runs",
+      "url": "/d/ta-latest-runs"
+    }
+  ],
+  "panels": [
+    {
+      "id": 30,
+      "title": "",
+      "transparent": true,
+      "type": "table",
+      "datasource": {
+        "type": "postgres",
+        "uid": "ticketagents-postgres"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 2
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "ticketagents-postgres"
+          },
+          "rawQuery": true,
+          "rawSql": "SELECT 'ready'::text AS \"Healthcheck\"",
+          "format": "table"
+        }
+      ],
+      "options": {
+        "showHeader": false,
+        "cellHeight": "lg"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {"id": "byName", "options": "Healthcheck"},
+            "properties": [
+              {"id": "custom.cellOptions", "value": {"type": "actions"}},
+              {
+                "id": "actions",
+                "value": [
+                  {
+                    "type": "fetch",
+                    "title": "Run healthcheck",
+                    "fetch": {
+                      "method": "POST",
+                      "url": "http://localhost:8081/actions/healthcheck",
+                      "headers": [["Content-Type", "application/json"]],
+                      "body": "{}"
+                    },
+                    "confirmation": "Run healthcheck for all configured agents now?",
+                    "style": {"backgroundColor": "#299c46"}
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 31,
+      "title": "Latest agent health",
+      "type": "row",
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "x": 0,
+        "y": 2,
+        "w": 24,
+        "h": 1
+      }
+    },
+    {
+      "id": 20,
+      "title": "Leave Request Agent",
+      "description": "Latest healthcheck for this agent in the selected environment; unlike the summary charts, this card is not limited by the time range. Healthy: non-empty answer and complete stream within the slow threshold. Slow: complete response above the threshold (10 seconds by default). Error: request error, empty answer, or incomplete stream. TTFT is time to the first answer token.",
+      "type": "canvas",
+      "datasource": {
+        "type": "postgres",
+        "uid": "ticketagents-postgres"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 3,
+        "w": 6,
+        "h": 6
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "ticketagents-postgres"
+          },
+          "rawQuery": true,
+          "format": "table",
+          "rawSql": "SELECT COALESCE(r.status, 'Unknown') AS \"Status\", CASE WHEN r.finished_at IS NULL THEN 'No healthcheck yet' WHEN r.finished_at > now() - interval '1 minute' THEN 'Checked: just now' WHEN r.finished_at > now() - interval '1 hour' THEN 'Checked: ' || floor(extract(epoch FROM (now() - r.finished_at)) / 60)::int || ' min ago' WHEN r.finished_at > now() - interval '24 hours' THEN 'Checked: ' || floor(extract(epoch FROM (now() - r.finished_at)) / 3600)::int || ' h ago' ELSE 'Checked: ' || to_char(r.finished_at AT TIME ZONE 'Asia/Ho_Chi_Minh', 'DD/MM/YYYY HH24:MI:SS') END AS \"Checked\", 'Total: ' || COALESCE(round((r.duration_ms / 1000.0)::numeric,3)::text || ' s', '—') || ' (TTFT: ' || COALESCE(round((r.ttft_ms / 1000.0)::numeric,3)::text || ' s', '—') || ')' AS \"Total\", 'Stream: ' || CASE WHEN r.stream_complete IS TRUE THEN 'complete' WHEN r.stream_complete IS FALSE THEN 'incomplete' ELSE 'unknown' END AS \"Stream\",r.run_id AS \"Run ID\",r.dify_log_url AS \"Dify log\" FROM (VALUES (1)) seed(n) LEFT JOIN LATERAL (SELECT status,finished_at,ttft_ms,duration_ms,stream_complete,run_id,dify_log_url FROM runs WHERE kind='healthcheck' AND agent='leave' AND environment IN (${environment:sqlstring}) ORDER BY started_at DESC LIMIT 1) r ON true"
+        }
+      ],
+      "options": {
+        "inlineEditing": false,
+        "showAdvancedTypes": true,
+        "root": {
+          "type": "frame",
+          "name": "leave latest healthcheck",
+          "elements": [
+            {
+              "type": "metric-value",
+              "name": "Status label",
+              "placement": {
+                "top": 6,
+                "height": 18,
+                "left": 12,
+                "width": 260
+              },
+              "constraint": {
+                "horizontal": "left",
+                "vertical": "top"
+              },
+              "config": {
+                "align": "left",
+                "valign": "middle",
+                "color": {
+                  "fixed": "text"
+                },
+                "text": {
+                  "fixed": "Status",
+                  "mode": "fixed"
+                },
+                "size": 14
+              },
+              "background": {
+                "color": {
+                  "fixed": "transparent"
+                }
+              },
+              "border": {
+                "color": {
+                  "fixed": "dark-green"
+                }
+              }
+            },
+            {
+              "type": "metric-value",
+              "name": "Status value",
+              "placement": {
+                "top": 25,
+                "height": 30,
+                "left": 12,
+                "width": 260
+              },
+              "constraint": {
+                "horizontal": "left",
+                "vertical": "top"
+              },
+              "config": {
+                "align": "left",
+                "valign": "middle",
+                "color": {
+                  "field": "Status",
+                  "fixed": "text"
+                },
+                "text": {
+                  "fixed": "",
+                  "field": "Status",
+                  "mode": "field"
+                },
+                "size": 21
+              },
+              "background": {
+                "color": {
+                  "fixed": "transparent"
+                }
+              },
+              "border": {
+                "color": {
+                  "fixed": "dark-green"
+                }
+              }
+            },
+            {
+              "type": "metric-value",
+              "name": "Checked value",
+              "placement": {
+                "top": 65,
+                "height": 25,
+                "left": 12,
+                "width": 260
+              },
+              "constraint": {
+                "horizontal": "left",
+                "vertical": "top"
+              },
+              "config": {
+                "align": "left",
+                "valign": "middle",
+                "color": {
+                  "fixed": "text"
+                },
+                "text": {
+                  "fixed": "",
+                  "field": "Checked",
+                  "mode": "field"
+                },
+                "size": 15
+              },
+              "background": {
+                "color": {
+                  "fixed": "transparent"
+                }
+              },
+              "border": {
+                "color": {
+                  "fixed": "dark-green"
+                }
+              }
+            },
+            {
+              "type": "metric-value",
+              "name": "Total value",
+              "placement": {
+                "top": 96,
+                "height": 23,
+                "left": 12,
+                "width": 260
+              },
+              "constraint": {
+                "horizontal": "left",
+                "vertical": "top"
+              },
+              "config": {
+                "align": "left",
+                "valign": "middle",
+                "color": {
+                  "fixed": "text"
+                },
+                "text": {
+                  "fixed": "",
+                  "field": "Total",
+                  "mode": "field"
+                },
+                "size": 15
+              },
+              "background": {
+                "color": {
+                  "fixed": "transparent"
+                }
+              },
+              "border": {
+                "color": {
+                  "fixed": "dark-green"
+                }
+              }
+            },
+            {
+              "type": "metric-value",
+              "name": "Stream value",
+              "placement": {
+                "top": 123,
+                "height": 23,
+                "left": 12,
+                "width": 260
+              },
+              "constraint": {
+                "horizontal": "left",
+                "vertical": "top"
+              },
+              "config": {
+                "align": "left",
+                "valign": "middle",
+                "color": {
+                  "fixed": "text"
+                },
+                "text": {
+                  "fixed": "",
+                  "field": "Stream",
+                  "mode": "field"
+                },
+                "size": 15
+              },
+              "background": {
+                "color": {
+                  "fixed": "transparent"
+                }
+              },
+              "border": {
+                "color": {
+                  "fixed": "dark-green"
+                }
+              }
+            },
+            {
+              "type": "metric-value",
+              "name": "View run",
+              "placement": {
+                "top": 155,
+                "height": 28,
+                "left": 12,
+                "width": 106
+              },
+              "constraint": {
+                "horizontal": "left",
+                "vertical": "top"
+              },
+              "config": {
+                "align": "center",
+                "valign": "middle",
+                "color": {
+                  "fixed": "#FFFFFF"
+                },
+                "text": {
+                  "fixed": "",
+                  "field": "Run ID",
+                  "mode": "field"
+                },
+                "size": 13
+              },
+              "background": {
+                "color": {
+                  "fixed": "#3274D9"
+                }
+              },
+              "border": {
+                "width": 0,
+                "radius": 5
+              },
+              "links": [
+                {
+                  "title": "Open run detail",
+                  "url": "http://localhost:8081/latest/healthcheck/leave/run",
+                  "targetBlank": false,
+                  "oneClick": true
+                }
+              ]
+            },
+            {
+              "type": "metric-value",
+              "name": "View log",
+              "placement": {
+                "top": 155,
+                "height": 28,
+                "left": 124,
+                "width": 106
+              },
+              "constraint": {
+                "horizontal": "left",
+                "vertical": "top"
+              },
+              "config": {
+                "align": "center",
+                "valign": "middle",
+                "color": {
+                  "fixed": "#FFFFFF"
+                },
+                "text": {
+                  "fixed": "",
+                  "field": "Dify log",
+                  "mode": "field"
+                },
+                "size": 13
+              },
+              "background": {
+                "color": {
+                  "fixed": "#536273"
+                }
+              },
+              "border": {
+                "width": 0,
+                "radius": 5
+              },
+              "links": [
+                {
+                  "title": "Open Dify log",
+                  "url": "http://localhost:8081/latest/healthcheck/leave/log",
+                  "targetBlank": true,
+                  "oneClick": true
+                }
+              ]
+            }
+          ],
+          "background": {
+            "color": {
+              "fixed": "transparent"
+            }
+          },
+          "border": {
+            "color": {
+              "fixed": "dark-green"
+            }
+          }
+        }
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Status"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "Error": {
+                        "text": "Fail",
+                        "color": "#E02F44"
+                      },
+                      "Slow": {
+                        "text": "Slow",
+                        "color": "#F2CC0C"
+                      },
+                      "Healthy": {
+                        "text": "Healthy",
+                        "color": "#299C46"
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Run ID"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "regex",
+                    "options": {
+                      "pattern": ".+",
+                      "result": {
+                        "text": "View run ↗"
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Open run detail",
+                    "url": "/d/ta-run-detail/run-detail?var-run_id=${__value.raw}",
+                    "targetBlank": false,
+                    "oneClick": true
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Dify log"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "regex",
+                    "options": {
+                      "pattern": ".+",
+                      "result": {
+                        "text": "View log ↗"
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Open Dify log",
+                    "url": "${__value.raw}",
+                    "targetBlank": true,
+                    "oneClick": true
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 21,
+      "title": "Late Request Agent",
+      "description": "Latest healthcheck for this agent in the selected environment; unlike the summary charts, this card is not limited by the time range. Healthy: non-empty answer and complete stream within the slow threshold. Slow: complete response above the threshold (10 seconds by default). Error: request error, empty answer, or incomplete stream. TTFT is time to the first answer token.",
+      "type": "canvas",
+      "datasource": {
+        "type": "postgres",
+        "uid": "ticketagents-postgres"
+      },
+      "gridPos": {
+        "x": 6,
+        "y": 3,
+        "w": 6,
+        "h": 6
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "ticketagents-postgres"
+          },
+          "rawQuery": true,
+          "format": "table",
+          "rawSql": "SELECT COALESCE(r.status, 'Unknown') AS \"Status\", CASE WHEN r.finished_at IS NULL THEN 'No healthcheck yet' WHEN r.finished_at > now() - interval '1 minute' THEN 'Checked: just now' WHEN r.finished_at > now() - interval '1 hour' THEN 'Checked: ' || floor(extract(epoch FROM (now() - r.finished_at)) / 60)::int || ' min ago' WHEN r.finished_at > now() - interval '24 hours' THEN 'Checked: ' || floor(extract(epoch FROM (now() - r.finished_at)) / 3600)::int || ' h ago' ELSE 'Checked: ' || to_char(r.finished_at AT TIME ZONE 'Asia/Ho_Chi_Minh', 'DD/MM/YYYY HH24:MI:SS') END AS \"Checked\", 'Total: ' || COALESCE(round((r.duration_ms / 1000.0)::numeric,3)::text || ' s', '—') || ' (TTFT: ' || COALESCE(round((r.ttft_ms / 1000.0)::numeric,3)::text || ' s', '—') || ')' AS \"Total\", 'Stream: ' || CASE WHEN r.stream_complete IS TRUE THEN 'complete' WHEN r.stream_complete IS FALSE THEN 'incomplete' ELSE 'unknown' END AS \"Stream\",r.run_id AS \"Run ID\",r.dify_log_url AS \"Dify log\" FROM (VALUES (1)) seed(n) LEFT JOIN LATERAL (SELECT status,finished_at,ttft_ms,duration_ms,stream_complete,run_id,dify_log_url FROM runs WHERE kind='healthcheck' AND agent='late' AND environment IN (${environment:sqlstring}) ORDER BY started_at DESC LIMIT 1) r ON true"
+        }
+      ],
+      "options": {
+        "inlineEditing": false,
+        "showAdvancedTypes": true,
+        "root": {
+          "type": "frame",
+          "name": "late latest healthcheck",
+          "elements": [
+            {
+              "type": "metric-value",
+              "name": "Status label",
+              "placement": {
+                "top": 6,
+                "height": 18,
+                "left": 12,
+                "width": 260
+              },
+              "constraint": {
+                "horizontal": "left",
+                "vertical": "top"
+              },
+              "config": {
+                "align": "left",
+                "valign": "middle",
+                "color": {
+                  "fixed": "text"
+                },
+                "text": {
+                  "fixed": "Status",
+                  "mode": "fixed"
+                },
+                "size": 14
+              },
+              "background": {
+                "color": {
+                  "fixed": "transparent"
+                }
+              },
+              "border": {
+                "color": {
+                  "fixed": "dark-green"
+                }
+              }
+            },
+            {
+              "type": "metric-value",
+              "name": "Status value",
+              "placement": {
+                "top": 25,
+                "height": 30,
+                "left": 12,
+                "width": 260
+              },
+              "constraint": {
+                "horizontal": "left",
+                "vertical": "top"
+              },
+              "config": {
+                "align": "left",
+                "valign": "middle",
+                "color": {
+                  "field": "Status",
+                  "fixed": "text"
+                },
+                "text": {
+                  "fixed": "",
+                  "field": "Status",
+                  "mode": "field"
+                },
+                "size": 21
+              },
+              "background": {
+                "color": {
+                  "fixed": "transparent"
+                }
+              },
+              "border": {
+                "color": {
+                  "fixed": "dark-green"
+                }
+              }
+            },
+            {
+              "type": "metric-value",
+              "name": "Checked value",
+              "placement": {
+                "top": 65,
+                "height": 25,
+                "left": 12,
+                "width": 260
+              },
+              "constraint": {
+                "horizontal": "left",
+                "vertical": "top"
+              },
+              "config": {
+                "align": "left",
+                "valign": "middle",
+                "color": {
+                  "fixed": "text"
+                },
+                "text": {
+                  "fixed": "",
+                  "field": "Checked",
+                  "mode": "field"
+                },
+                "size": 15
+              },
+              "background": {
+                "color": {
+                  "fixed": "transparent"
+                }
+              },
+              "border": {
+                "color": {
+                  "fixed": "dark-green"
+                }
+              }
+            },
+            {
+              "type": "metric-value",
+              "name": "Total value",
+              "placement": {
+                "top": 96,
+                "height": 23,
+                "left": 12,
+                "width": 260
+              },
+              "constraint": {
+                "horizontal": "left",
+                "vertical": "top"
+              },
+              "config": {
+                "align": "left",
+                "valign": "middle",
+                "color": {
+                  "fixed": "text"
+                },
+                "text": {
+                  "fixed": "",
+                  "field": "Total",
+                  "mode": "field"
+                },
+                "size": 15
+              },
+              "background": {
+                "color": {
+                  "fixed": "transparent"
+                }
+              },
+              "border": {
+                "color": {
+                  "fixed": "dark-green"
+                }
+              }
+            },
+            {
+              "type": "metric-value",
+              "name": "Stream value",
+              "placement": {
+                "top": 123,
+                "height": 23,
+                "left": 12,
+                "width": 260
+              },
+              "constraint": {
+                "horizontal": "left",
+                "vertical": "top"
+              },
+              "config": {
+                "align": "left",
+                "valign": "middle",
+                "color": {
+                  "fixed": "text"
+                },
+                "text": {
+                  "fixed": "",
+                  "field": "Stream",
+                  "mode": "field"
+                },
+                "size": 15
+              },
+              "background": {
+                "color": {
+                  "fixed": "transparent"
+                }
+              },
+              "border": {
+                "color": {
+                  "fixed": "dark-green"
+                }
+              }
+            },
+            {
+              "type": "metric-value",
+              "name": "View run",
+              "placement": {
+                "top": 155,
+                "height": 28,
+                "left": 12,
+                "width": 106
+              },
+              "constraint": {
+                "horizontal": "left",
+                "vertical": "top"
+              },
+              "config": {
+                "align": "center",
+                "valign": "middle",
+                "color": {
+                  "fixed": "#FFFFFF"
+                },
+                "text": {
+                  "fixed": "",
+                  "field": "Run ID",
+                  "mode": "field"
+                },
+                "size": 13
+              },
+              "background": {
+                "color": {
+                  "fixed": "#3274D9"
+                }
+              },
+              "border": {
+                "width": 0,
+                "radius": 5
+              },
+              "links": [
+                {
+                  "title": "Open run detail",
+                  "url": "http://localhost:8081/latest/healthcheck/late/run",
+                  "targetBlank": false,
+                  "oneClick": true
+                }
+              ]
+            },
+            {
+              "type": "metric-value",
+              "name": "View log",
+              "placement": {
+                "top": 155,
+                "height": 28,
+                "left": 124,
+                "width": 106
+              },
+              "constraint": {
+                "horizontal": "left",
+                "vertical": "top"
+              },
+              "config": {
+                "align": "center",
+                "valign": "middle",
+                "color": {
+                  "fixed": "#FFFFFF"
+                },
+                "text": {
+                  "fixed": "",
+                  "field": "Dify log",
+                  "mode": "field"
+                },
+                "size": 13
+              },
+              "background": {
+                "color": {
+                  "fixed": "#536273"
+                }
+              },
+              "border": {
+                "width": 0,
+                "radius": 5
+              },
+              "links": [
+                {
+                  "title": "Open Dify log",
+                  "url": "http://localhost:8081/latest/healthcheck/late/log",
+                  "targetBlank": true,
+                  "oneClick": true
+                }
+              ]
+            }
+          ],
+          "background": {
+            "color": {
+              "fixed": "transparent"
+            }
+          },
+          "border": {
+            "color": {
+              "fixed": "dark-green"
+            }
+          }
+        }
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Status"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "Error": {
+                        "text": "Fail",
+                        "color": "#E02F44"
+                      },
+                      "Slow": {
+                        "text": "Slow",
+                        "color": "#F2CC0C"
+                      },
+                      "Healthy": {
+                        "text": "Healthy",
+                        "color": "#299C46"
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Run ID"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "regex",
+                    "options": {
+                      "pattern": ".+",
+                      "result": {
+                        "text": "View run ↗"
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Open run detail",
+                    "url": "/d/ta-run-detail/run-detail?var-run_id=${__value.raw}",
+                    "targetBlank": false,
+                    "oneClick": true
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Dify log"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "regex",
+                    "options": {
+                      "pattern": ".+",
+                      "result": {
+                        "text": "View log ↗"
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Open Dify log",
+                    "url": "${__value.raw}",
+                    "targetBlank": true,
+                    "oneClick": true
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 22,
+      "title": "IT Helpdesk Agent",
+      "description": "Latest healthcheck for this agent in the selected environment; unlike the summary charts, this card is not limited by the time range. Healthy: non-empty answer and complete stream within the slow threshold. Slow: complete response above the threshold (10 seconds by default). Error: request error, empty answer, or incomplete stream. TTFT is time to the first answer token.",
+      "type": "canvas",
+      "datasource": {
+        "type": "postgres",
+        "uid": "ticketagents-postgres"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 3,
+        "w": 6,
+        "h": 6
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "ticketagents-postgres"
+          },
+          "rawQuery": true,
+          "format": "table",
+          "rawSql": "SELECT COALESCE(r.status, 'Unknown') AS \"Status\", CASE WHEN r.finished_at IS NULL THEN 'No healthcheck yet' WHEN r.finished_at > now() - interval '1 minute' THEN 'Checked: just now' WHEN r.finished_at > now() - interval '1 hour' THEN 'Checked: ' || floor(extract(epoch FROM (now() - r.finished_at)) / 60)::int || ' min ago' WHEN r.finished_at > now() - interval '24 hours' THEN 'Checked: ' || floor(extract(epoch FROM (now() - r.finished_at)) / 3600)::int || ' h ago' ELSE 'Checked: ' || to_char(r.finished_at AT TIME ZONE 'Asia/Ho_Chi_Minh', 'DD/MM/YYYY HH24:MI:SS') END AS \"Checked\", 'Total: ' || COALESCE(round((r.duration_ms / 1000.0)::numeric,3)::text || ' s', '—') || ' (TTFT: ' || COALESCE(round((r.ttft_ms / 1000.0)::numeric,3)::text || ' s', '—') || ')' AS \"Total\", 'Stream: ' || CASE WHEN r.stream_complete IS TRUE THEN 'complete' WHEN r.stream_complete IS FALSE THEN 'incomplete' ELSE 'unknown' END AS \"Stream\",r.run_id AS \"Run ID\",r.dify_log_url AS \"Dify log\" FROM (VALUES (1)) seed(n) LEFT JOIN LATERAL (SELECT status,finished_at,ttft_ms,duration_ms,stream_complete,run_id,dify_log_url FROM runs WHERE kind='healthcheck' AND agent='helpdesk' AND environment IN (${environment:sqlstring}) ORDER BY started_at DESC LIMIT 1) r ON true"
+        }
+      ],
+      "options": {
+        "inlineEditing": false,
+        "showAdvancedTypes": true,
+        "root": {
+          "type": "frame",
+          "name": "helpdesk latest healthcheck",
+          "elements": [
+            {
+              "type": "metric-value",
+              "name": "Status label",
+              "placement": {
+                "top": 6,
+                "height": 18,
+                "left": 12,
+                "width": 260
+              },
+              "constraint": {
+                "horizontal": "left",
+                "vertical": "top"
+              },
+              "config": {
+                "align": "left",
+                "valign": "middle",
+                "color": {
+                  "fixed": "text"
+                },
+                "text": {
+                  "fixed": "Status",
+                  "mode": "fixed"
+                },
+                "size": 14
+              },
+              "background": {
+                "color": {
+                  "fixed": "transparent"
+                }
+              },
+              "border": {
+                "color": {
+                  "fixed": "dark-green"
+                }
+              }
+            },
+            {
+              "type": "metric-value",
+              "name": "Status value",
+              "placement": {
+                "top": 25,
+                "height": 30,
+                "left": 12,
+                "width": 260
+              },
+              "constraint": {
+                "horizontal": "left",
+                "vertical": "top"
+              },
+              "config": {
+                "align": "left",
+                "valign": "middle",
+                "color": {
+                  "field": "Status",
+                  "fixed": "text"
+                },
+                "text": {
+                  "fixed": "",
+                  "field": "Status",
+                  "mode": "field"
+                },
+                "size": 21
+              },
+              "background": {
+                "color": {
+                  "fixed": "transparent"
+                }
+              },
+              "border": {
+                "color": {
+                  "fixed": "dark-green"
+                }
+              }
+            },
+            {
+              "type": "metric-value",
+              "name": "Checked value",
+              "placement": {
+                "top": 65,
+                "height": 25,
+                "left": 12,
+                "width": 260
+              },
+              "constraint": {
+                "horizontal": "left",
+                "vertical": "top"
+              },
+              "config": {
+                "align": "left",
+                "valign": "middle",
+                "color": {
+                  "fixed": "text"
+                },
+                "text": {
+                  "fixed": "",
+                  "field": "Checked",
+                  "mode": "field"
+                },
+                "size": 15
+              },
+              "background": {
+                "color": {
+                  "fixed": "transparent"
+                }
+              },
+              "border": {
+                "color": {
+                  "fixed": "dark-green"
+                }
+              }
+            },
+            {
+              "type": "metric-value",
+              "name": "Total value",
+              "placement": {
+                "top": 96,
+                "height": 23,
+                "left": 12,
+                "width": 260
+              },
+              "constraint": {
+                "horizontal": "left",
+                "vertical": "top"
+              },
+              "config": {
+                "align": "left",
+                "valign": "middle",
+                "color": {
+                  "fixed": "text"
+                },
+                "text": {
+                  "fixed": "",
+                  "field": "Total",
+                  "mode": "field"
+                },
+                "size": 15
+              },
+              "background": {
+                "color": {
+                  "fixed": "transparent"
+                }
+              },
+              "border": {
+                "color": {
+                  "fixed": "dark-green"
+                }
+              }
+            },
+            {
+              "type": "metric-value",
+              "name": "Stream value",
+              "placement": {
+                "top": 123,
+                "height": 23,
+                "left": 12,
+                "width": 260
+              },
+              "constraint": {
+                "horizontal": "left",
+                "vertical": "top"
+              },
+              "config": {
+                "align": "left",
+                "valign": "middle",
+                "color": {
+                  "fixed": "text"
+                },
+                "text": {
+                  "fixed": "",
+                  "field": "Stream",
+                  "mode": "field"
+                },
+                "size": 15
+              },
+              "background": {
+                "color": {
+                  "fixed": "transparent"
+                }
+              },
+              "border": {
+                "color": {
+                  "fixed": "dark-green"
+                }
+              }
+            },
+            {
+              "type": "metric-value",
+              "name": "View run",
+              "placement": {
+                "top": 155,
+                "height": 28,
+                "left": 12,
+                "width": 106
+              },
+              "constraint": {
+                "horizontal": "left",
+                "vertical": "top"
+              },
+              "config": {
+                "align": "center",
+                "valign": "middle",
+                "color": {
+                  "fixed": "#FFFFFF"
+                },
+                "text": {
+                  "fixed": "",
+                  "field": "Run ID",
+                  "mode": "field"
+                },
+                "size": 13
+              },
+              "background": {
+                "color": {
+                  "fixed": "#3274D9"
+                }
+              },
+              "border": {
+                "width": 0,
+                "radius": 5
+              },
+              "links": [
+                {
+                  "title": "Open run detail",
+                  "url": "http://localhost:8081/latest/healthcheck/helpdesk/run",
+                  "targetBlank": false,
+                  "oneClick": true
+                }
+              ]
+            },
+            {
+              "type": "metric-value",
+              "name": "View log",
+              "placement": {
+                "top": 155,
+                "height": 28,
+                "left": 124,
+                "width": 106
+              },
+              "constraint": {
+                "horizontal": "left",
+                "vertical": "top"
+              },
+              "config": {
+                "align": "center",
+                "valign": "middle",
+                "color": {
+                  "fixed": "#FFFFFF"
+                },
+                "text": {
+                  "fixed": "",
+                  "field": "Dify log",
+                  "mode": "field"
+                },
+                "size": 13
+              },
+              "background": {
+                "color": {
+                  "fixed": "#536273"
+                }
+              },
+              "border": {
+                "width": 0,
+                "radius": 5
+              },
+              "links": [
+                {
+                  "title": "Open Dify log",
+                  "url": "http://localhost:8081/latest/healthcheck/helpdesk/log",
+                  "targetBlank": true,
+                  "oneClick": true
+                }
+              ]
+            }
+          ],
+          "background": {
+            "color": {
+              "fixed": "transparent"
+            }
+          },
+          "border": {
+            "color": {
+              "fixed": "dark-green"
+            }
+          }
+        }
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Status"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "Error": {
+                        "text": "Fail",
+                        "color": "#E02F44"
+                      },
+                      "Slow": {
+                        "text": "Slow",
+                        "color": "#F2CC0C"
+                      },
+                      "Healthy": {
+                        "text": "Healthy",
+                        "color": "#299C46"
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Run ID"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "regex",
+                    "options": {
+                      "pattern": ".+",
+                      "result": {
+                        "text": "View run ↗"
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Open run detail",
+                    "url": "/d/ta-run-detail/run-detail?var-run_id=${__value.raw}",
+                    "targetBlank": false,
+                    "oneClick": true
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Dify log"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "regex",
+                    "options": {
+                      "pattern": ".+",
+                      "result": {
+                        "text": "View log ↗"
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Open Dify log",
+                    "url": "${__value.raw}",
+                    "targetBlank": true,
+                    "oneClick": true
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 23,
+      "title": "Meeting Booking Agent",
+      "description": "Latest healthcheck for this agent in the selected environment; unlike the summary charts, this card is not limited by the time range. Healthy: non-empty answer and complete stream within the slow threshold. Slow: complete response above the threshold (10 seconds by default). Error: request error, empty answer, or incomplete stream. TTFT is time to the first answer token.",
+      "type": "canvas",
+      "datasource": {
+        "type": "postgres",
+        "uid": "ticketagents-postgres"
+      },
+      "gridPos": {
+        "x": 18,
+        "y": 3,
+        "w": 6,
+        "h": 6
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "ticketagents-postgres"
+          },
+          "rawQuery": true,
+          "format": "table",
+          "rawSql": "SELECT COALESCE(r.status, 'Unknown') AS \"Status\", CASE WHEN r.finished_at IS NULL THEN 'No healthcheck yet' WHEN r.finished_at > now() - interval '1 minute' THEN 'Checked: just now' WHEN r.finished_at > now() - interval '1 hour' THEN 'Checked: ' || floor(extract(epoch FROM (now() - r.finished_at)) / 60)::int || ' min ago' WHEN r.finished_at > now() - interval '24 hours' THEN 'Checked: ' || floor(extract(epoch FROM (now() - r.finished_at)) / 3600)::int || ' h ago' ELSE 'Checked: ' || to_char(r.finished_at AT TIME ZONE 'Asia/Ho_Chi_Minh', 'DD/MM/YYYY HH24:MI:SS') END AS \"Checked\", 'Total: ' || COALESCE(round((r.duration_ms / 1000.0)::numeric,3)::text || ' s', '—') || ' (TTFT: ' || COALESCE(round((r.ttft_ms / 1000.0)::numeric,3)::text || ' s', '—') || ')' AS \"Total\", 'Stream: ' || CASE WHEN r.stream_complete IS TRUE THEN 'complete' WHEN r.stream_complete IS FALSE THEN 'incomplete' ELSE 'unknown' END AS \"Stream\",r.run_id AS \"Run ID\",r.dify_log_url AS \"Dify log\" FROM (VALUES (1)) seed(n) LEFT JOIN LATERAL (SELECT status,finished_at,ttft_ms,duration_ms,stream_complete,run_id,dify_log_url FROM runs WHERE kind='healthcheck' AND agent='bookroom' AND environment IN (${environment:sqlstring}) ORDER BY started_at DESC LIMIT 1) r ON true"
+        }
+      ],
+      "options": {
+        "inlineEditing": false,
+        "showAdvancedTypes": true,
+        "root": {
+          "type": "frame",
+          "name": "bookroom latest healthcheck",
+          "elements": [
+            {
+              "type": "metric-value",
+              "name": "Status label",
+              "placement": {
+                "top": 6,
+                "height": 18,
+                "left": 12,
+                "width": 260
+              },
+              "constraint": {
+                "horizontal": "left",
+                "vertical": "top"
+              },
+              "config": {
+                "align": "left",
+                "valign": "middle",
+                "color": {
+                  "fixed": "text"
+                },
+                "text": {
+                  "fixed": "Status",
+                  "mode": "fixed"
+                },
+                "size": 14
+              },
+              "background": {
+                "color": {
+                  "fixed": "transparent"
+                }
+              },
+              "border": {
+                "color": {
+                  "fixed": "dark-green"
+                }
+              }
+            },
+            {
+              "type": "metric-value",
+              "name": "Status value",
+              "placement": {
+                "top": 25,
+                "height": 30,
+                "left": 12,
+                "width": 260
+              },
+              "constraint": {
+                "horizontal": "left",
+                "vertical": "top"
+              },
+              "config": {
+                "align": "left",
+                "valign": "middle",
+                "color": {
+                  "field": "Status",
+                  "fixed": "text"
+                },
+                "text": {
+                  "fixed": "",
+                  "field": "Status",
+                  "mode": "field"
+                },
+                "size": 21
+              },
+              "background": {
+                "color": {
+                  "fixed": "transparent"
+                }
+              },
+              "border": {
+                "color": {
+                  "fixed": "dark-green"
+                }
+              }
+            },
+            {
+              "type": "metric-value",
+              "name": "Checked value",
+              "placement": {
+                "top": 65,
+                "height": 25,
+                "left": 12,
+                "width": 260
+              },
+              "constraint": {
+                "horizontal": "left",
+                "vertical": "top"
+              },
+              "config": {
+                "align": "left",
+                "valign": "middle",
+                "color": {
+                  "fixed": "text"
+                },
+                "text": {
+                  "fixed": "",
+                  "field": "Checked",
+                  "mode": "field"
+                },
+                "size": 15
+              },
+              "background": {
+                "color": {
+                  "fixed": "transparent"
+                }
+              },
+              "border": {
+                "color": {
+                  "fixed": "dark-green"
+                }
+              }
+            },
+            {
+              "type": "metric-value",
+              "name": "Total value",
+              "placement": {
+                "top": 96,
+                "height": 23,
+                "left": 12,
+                "width": 260
+              },
+              "constraint": {
+                "horizontal": "left",
+                "vertical": "top"
+              },
+              "config": {
+                "align": "left",
+                "valign": "middle",
+                "color": {
+                  "fixed": "text"
+                },
+                "text": {
+                  "fixed": "",
+                  "field": "Total",
+                  "mode": "field"
+                },
+                "size": 15
+              },
+              "background": {
+                "color": {
+                  "fixed": "transparent"
+                }
+              },
+              "border": {
+                "color": {
+                  "fixed": "dark-green"
+                }
+              }
+            },
+            {
+              "type": "metric-value",
+              "name": "Stream value",
+              "placement": {
+                "top": 123,
+                "height": 23,
+                "left": 12,
+                "width": 260
+              },
+              "constraint": {
+                "horizontal": "left",
+                "vertical": "top"
+              },
+              "config": {
+                "align": "left",
+                "valign": "middle",
+                "color": {
+                  "fixed": "text"
+                },
+                "text": {
+                  "fixed": "",
+                  "field": "Stream",
+                  "mode": "field"
+                },
+                "size": 15
+              },
+              "background": {
+                "color": {
+                  "fixed": "transparent"
+                }
+              },
+              "border": {
+                "color": {
+                  "fixed": "dark-green"
+                }
+              }
+            },
+            {
+              "type": "metric-value",
+              "name": "View run",
+              "placement": {
+                "top": 155,
+                "height": 28,
+                "left": 12,
+                "width": 106
+              },
+              "constraint": {
+                "horizontal": "left",
+                "vertical": "top"
+              },
+              "config": {
+                "align": "center",
+                "valign": "middle",
+                "color": {
+                  "fixed": "#FFFFFF"
+                },
+                "text": {
+                  "fixed": "",
+                  "field": "Run ID",
+                  "mode": "field"
+                },
+                "size": 13
+              },
+              "background": {
+                "color": {
+                  "fixed": "#3274D9"
+                }
+              },
+              "border": {
+                "width": 0,
+                "radius": 5
+              },
+              "links": [
+                {
+                  "title": "Open run detail",
+                  "url": "http://localhost:8081/latest/healthcheck/bookroom/run",
+                  "targetBlank": false,
+                  "oneClick": true
+                }
+              ]
+            },
+            {
+              "type": "metric-value",
+              "name": "View log",
+              "placement": {
+                "top": 155,
+                "height": 28,
+                "left": 124,
+                "width": 106
+              },
+              "constraint": {
+                "horizontal": "left",
+                "vertical": "top"
+              },
+              "config": {
+                "align": "center",
+                "valign": "middle",
+                "color": {
+                  "fixed": "#FFFFFF"
+                },
+                "text": {
+                  "fixed": "",
+                  "field": "Dify log",
+                  "mode": "field"
+                },
+                "size": 13
+              },
+              "background": {
+                "color": {
+                  "fixed": "#536273"
+                }
+              },
+              "border": {
+                "width": 0,
+                "radius": 5
+              },
+              "links": [
+                {
+                  "title": "Open Dify log",
+                  "url": "http://localhost:8081/latest/healthcheck/bookroom/log",
+                  "targetBlank": true,
+                  "oneClick": true
+                }
+              ]
+            }
+          ],
+          "background": {
+            "color": {
+              "fixed": "transparent"
+            }
+          },
+          "border": {
+            "color": {
+              "fixed": "dark-green"
+            }
+          }
+        }
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Status"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "Error": {
+                        "text": "Fail",
+                        "color": "#E02F44"
+                      },
+                      "Slow": {
+                        "text": "Slow",
+                        "color": "#F2CC0C"
+                      },
+                      "Healthy": {
+                        "text": "Healthy",
+                        "color": "#299C46"
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Run ID"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "regex",
+                    "options": {
+                      "pattern": ".+",
+                      "result": {
+                        "text": "View run ↗"
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Open run detail",
+                    "url": "/d/ta-run-detail/run-detail?var-run_id=${__value.raw}",
+                    "targetBlank": false,
+                    "oneClick": true
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Dify log"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "regex",
+                    "options": {
+                      "pattern": ".+",
+                      "result": {
+                        "text": "View log ↗"
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Open Dify log",
+                    "url": "${__value.raw}",
+                    "targetBlank": true,
+                    "oneClick": true
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 33,
+      "title": "Today's healthcheck schedule",
+      "type": "row",
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "x": 0,
+        "y": 9,
+        "w": 24,
+        "h": 1
+      }
+    },
+    {
+      "id": 2,
+      "title": "Today's scheduled batches",
+      "type": "xychart",
+      "datasource": {
+        "type": "postgres",
+        "uid": "ticketagents-postgres"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 10,
+        "w": 24,
+        "h": 6
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "ticketagents-postgres"
+          },
+          "rawQuery": true,
+          "rawSql": "WITH bounds AS (SELECT date_trunc('day', now() AT TIME ZONE 'Asia/Ho_Chi_Minh') AT TIME ZONE 'Asia/Ho_Chi_Minh' AS day_start), batches AS (SELECT e.scheduled_for,e.environment,CASE WHEN b.status='completed' AND COALESCE(b.failed_agents,0)=0 AND COALESCE(b.completed_agents,0)>=cardinality(e.agents) THEN 4 WHEN COALESCE(b.failed_agents,0)>0 OR b.status IN ('error','failed') OR (b.status='completed' AND COALESCE(b.completed_agents,0)<cardinality(e.agents)) THEN 1 WHEN now()>e.scheduled_for+e.grace_minutes*interval '1 minute' THEN 0 WHEN now()<e.scheduled_for THEN 3 ELSE 2 END AS status_code FROM expected_batches e LEFT JOIN batch_progress b ON b.environment=e.environment AND b.scheduled_for=e.scheduled_for WHERE e.environment IN (${environment:sqlstring}) AND (e.scheduled_for AT TIME ZONE 'Asia/Ho_Chi_Minh')::date=(now() AT TIME ZONE 'Asia/Ho_Chi_Minh')::date), chart_points AS (SELECT scheduled_for, CASE status_code WHEN 0 THEN 0 WHEN 3 THEN 1 WHEN 2 THEN 2 WHEN 1 THEN 3 WHEN 4 THEN 4 END::double precision AS status, status_code::double precision AS color, environment FROM batches UNION ALL SELECT day_start, NULL::double precision, NULL::double precision, NULL::text FROM bounds UNION ALL SELECT day_start + interval '1 day', NULL::double precision, NULL::double precision, NULL::text FROM bounds) SELECT scheduled_for AS \"Scheduled (VN)\",status AS \"Status\",color AS \"Color\",environment AS \"Environment\" FROM chart_points ORDER BY scheduled_for",
+          "format": "table"
+        }
+      ],
+      "options": {
+        "seriesMapping": "manual",
+        "series": [
+          {
+            "x": "Scheduled (VN)",
+            "y": "Status",
+            "pointColor": {
+              "field": "Color"
+            }
+          }
+        ],
+        "dims": {
+          "x": "Scheduled (VN)"
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "legend": {
+          "showLegend": false,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 0,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.5
+              },
+              {
+                "color": "yellow",
+                "value": 1.5
+              },
+              {
+                "color": "blue",
+                "value": 2.5
+              },
+              {
+                "color": "green",
+                "value": 3.5
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "Missed",
+                  "color": "red"
+                },
+                "1": {
+                  "text": "Waiting",
+                  "color": "blue"
+                },
+                "2": {
+                  "text": "Pending",
+                  "color": "yellow"
+                },
+                "3": {
+                  "text": "Error",
+                  "color": "orange"
+                },
+                "4": {
+                  "text": "Complete",
+                  "color": "green"
+                }
+              }
+            }
+          ],
+          "custom": {
+            "show": "points",
+            "pointSize": {
+              "fixed": 9
+            },
+            "lineWidth": 1,
+          "axisPlacement": "auto",
+            "axisLabel": "Status"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Status"
+            },
+            "properties": [
+              {
+                "id": "min",
+                "value": -0.5
+              },
+              {
+                "id": "max",
+                "value": 4.5
+              },
+              {
+                "id": "custom.axisLabel",
+                "value": "Status"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Scheduled (VN)"
+            },
+            "properties": [
+              {
+                "id": "custom.axisLabel",
+                "value": "Scheduled (VN)"
+              }
+            ]
+          }
+        ]
+      },
+      "description": "Each dot is a healthcheck batch scheduled today in Vietnam time (00:00–24:00). Bottom to top: Missed = not completed after the grace period; Waiting = scheduled time has not arrived; Pending = within the grace period; Error = an agent failed or the batch has missing results; Complete = all expected agents finished without errors. The grace period comes from the schedule's grace_minutes setting."
+    },
+    {
+      "id": 34,
+      "title": "Health & performance summary",
+      "type": "row",
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "x": 0,
+        "y": 16,
+        "w": 24,
+        "h": 1
+      }
+    },
+    {
+      "id": 3,
+      "title": "Response latency (s)",
+      "description": "Each point is the total duration of one healthcheck request, from sending the request to completing the response, converted from milliseconds to seconds. The selected time range, environment, and agent filters apply. Higher points mean slower responses.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "postgres",
+        "uid": "ticketagents-postgres"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 24,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "ticketagents-postgres"
+          },
+          "rawQuery": true,
+          "rawSql": "SELECT started_at AS time, agent AS metric, (duration_ms / 1000.0) AS duration_s FROM runs WHERE kind='healthcheck' AND environment IN (${environment:sqlstring}) AND agent IN (${agent:sqlstring}) AND $__timeFilter(started_at) ORDER BY 1",
+          "format": "time_series"
+        }
+      ],
+      "options": {},
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: s",
+          "custom": {"drawStyle": "points", "showPoints": "always", "pointSize": 5, "lineWidth": 0, "fillOpacity": 0}
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 4,
+      "title": "Time to first answer token (s)",
+      "description": "TTFT (Time to First Token) measures the time from sending a request to the first answer token, in seconds. It shows when the answer starts; Total time shows when the request finishes. A run without a first answer token has no TTFT value.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "postgres",
+        "uid": "ticketagents-postgres"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 24,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "ticketagents-postgres"
+          },
+          "rawQuery": true,
+          "rawSql": "SELECT started_at AS time, agent AS metric, (ttft_ms / 1000.0) AS ttft_s FROM runs WHERE kind='healthcheck' AND environment IN (${environment:sqlstring}) AND agent IN (${agent:sqlstring}) AND $__timeFilter(started_at) ORDER BY 1",
+          "format": "time_series"
+        }
+      ],
+      "options": {},
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: s",
+          "custom": {"drawStyle": "points", "showPoints": "always", "pointSize": 5, "lineWidth": 0, "fillOpacity": 0}
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 6,
+      "title": "Runs by health status",
+      "description": "Each bar counts an agent's healthcheck runs in the selected time range. Healthy, Slow, and Errors are counts of runs by status and together make the total. Healthy = complete response within the slow threshold; Slow = complete response above it; Error = request error, empty answer, or incomplete stream.",
+      "type": "barchart",
+      "datasource": {
+        "type": "postgres",
+        "uid": "ticketagents-postgres"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 17,
+        "w": 12,
+        "h": 7
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "ticketagents-postgres"
+          },
+          "rawQuery": true,
+          "rawSql": "SELECT agent || ' · ' || count(*)::text || ' runs' AS \"Agent\",count(*) FILTER(WHERE status='Healthy') AS \"Healthy\",count(*) FILTER(WHERE status='Slow') AS \"Slow\",count(*) FILTER(WHERE status='Error') AS \"Errors\" FROM runs WHERE kind='healthcheck' AND environment IN (${environment:sqlstring}) AND agent IN (${agent:sqlstring}) AND $__timeFilter(started_at) GROUP BY agent ORDER BY agent",
+          "format": "table"
+        }
+      ],
+      "options": {
+        "orientation": "horizontal",
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0,
+        "xTickLabelMaxLength": 28,
+        "showValue": "never",
+        "stacking": "normal",
+        "groupWidth": 0.7,
+        "barWidth": 0.45,
+        "barRadius": 0,
+        "fullHighlight": false,
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "Runs",
+            "axisPlacement": "auto",
+            "fillOpacity": 85,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineWidth": 1,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Healthy"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#299C46"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Slow"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#F2CC0C"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Errors"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#E02F44"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 32,
+      "title": "Total time percentiles (P50 → P95)",
+      "description": "Total-time percentiles by agent, using only runs with a measured duration. P50 is the median: about half of runs finish within this time. P95 is the time within which about 95% of runs finish. The blue segment spans 0 to P50; the purple segment spans P50 to P95, so it is the additional tail, not another cumulative P95.",
+      "type": "barchart",
+      "datasource": {
+        "type": "postgres",
+        "uid": "ticketagents-postgres"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 17,
+        "w": 12,
+        "h": 7
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "ticketagents-postgres"
+          },
+          "rawQuery": true,
+          "rawSql": "SELECT agent || ' · P50 ' || round((percentile_cont(0.50) WITHIN GROUP(ORDER BY duration_ms) / 1000.0)::numeric,3)::text || 's · P95 ' || round((percentile_cont(0.95) WITHIN GROUP(ORDER BY duration_ms) / 1000.0)::numeric,3)::text || 's' AS \"Agent\",round((percentile_cont(0.50) WITHIN GROUP(ORDER BY duration_ms) / 1000.0)::numeric,3) AS \"P50 (s)\",round(((percentile_cont(0.95) WITHIN GROUP(ORDER BY duration_ms) - percentile_cont(0.50) WITHIN GROUP(ORDER BY duration_ms)) / 1000.0)::numeric,3) AS \"P50–P95 (s)\" FROM runs WHERE kind='healthcheck' AND duration_ms IS NOT NULL AND environment IN (${environment:sqlstring}) AND agent IN (${agent:sqlstring}) AND $__timeFilter(started_at) GROUP BY agent ORDER BY agent",
+          "format": "table"
+        }
+      ],
+      "options": {
+        "orientation": "horizontal",
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0,
+        "xTickLabelMaxLength": 48,
+        "showValue": "never",
+        "stacking": "normal",
+        "groupWidth": 0.7,
+        "barWidth": 0.45,
+        "barRadius": 0,
+        "fullHighlight": false,
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "min": 0,
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "Total time (s)",
+            "axisPlacement": "auto",
+            "fillOpacity": 85,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineWidth": 1,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "P50 (s)"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#3274D9"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "P50–P95 (s)"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#8F3BB8"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 35,
+      "title": "Run history & tool details",
+      "type": "row",
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "x": 0,
+        "y": 32,
+        "w": 24,
+        "h": 1
+      }
+    },
+    {
+      "id": 7,
+      "title": "Healthcheck runs and errors",
+      "description": "Up to 200 recent healthchecks matching the filters. Finished (VN) is completion time in Vietnam; Trigger identifies scheduled or manual runs; TTFT is time to the first answer token; Total is the full duration. Select a Run ID for its details, or View log for the Dify log when available.",
+      "type": "table",
+      "datasource": {
+        "type": "postgres",
+        "uid": "ticketagents-postgres"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 33,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "ticketagents-postgres"
+          },
+          "rawQuery": true,
+          "rawSql": "SELECT to_char(finished_at AT TIME ZONE 'Asia/Ho_Chi_Minh','DD/MM/YYYY HH24:MI:SS') AS \"Finished (VN)\",agent AS \"Agent\",trigger AS \"Trigger\",status AS \"Status\",round((ttft_ms / 1000.0)::numeric,3) AS \"TTFT (s)\",round((duration_ms / 1000.0)::numeric,3) AS \"Total (s)\",error AS \"Error\",run_id AS \"Run ID\",CASE WHEN dify_log_url ~ '^https?://' THEN '[View log](' || replace(dify_log_url,')','%29') || ')' ELSE NULL END AS \"Dify log\" FROM runs WHERE kind='healthcheck' AND environment IN (${environment:sqlstring}) AND agent IN (${agent:sqlstring}) AND $__timeFilter(started_at) ORDER BY started_at DESC LIMIT 200",
+          "format": "table"
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+          "minWidth": 60
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Run ID"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Run detail",
+                    "url": "/d/ta-run-detail/run-detail?var-run_id=${__data.fields[\"Run ID\"]}",
+                    "targetBlank": false
+                  }
+                ]
+              },
+              {
+                "id": "custom.width",
+                "value": 210
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Dify log"
+            },
+            "properties": [
+              {"id": "custom.cellOptions", "value": {"type": "markdown"}},
+              {
+                "id": "custom.width",
+                "value": 110
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Finished (VN)"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 175
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Agent"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 90
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Trigger"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 85
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Status"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 90
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {"type": "color-text"}
+              },
+              {
+                "id": "mappings",
+                "value": [{"type": "value", "options": {"Healthy": {"text": "Healthy", "color": "#299C46"}, "Slow": {"text": "Slow", "color": "#B77900"}, "Error": {"text": "Error", "color": "#E02F44"}}}]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "TTFT (s)"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 90
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Total (s)"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 90
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Error"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 180
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 8,
+      "title": "Recent tool calls",
+      "description": "Up to 200 recent tool calls from the filtered healthchecks. Turn is the conversation turn; Tool order is the call's position within that turn. Duration appears only when reliable timing is available. A blank duration means it could not be measured accurately, not zero seconds. Timing source identifies where the timing came from.",
+      "type": "table",
+      "datasource": {
+        "type": "postgres",
+        "uid": "ticketagents-postgres"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 41,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "ticketagents-postgres"
+          },
+          "rawQuery": true,
+          "rawSql": "SELECT to_char(r.started_at AT TIME ZONE 'Asia/Ho_Chi_Minh','DD/MM/YYYY HH24:MI:SS') AS \"Started (VN)\",r.agent AS \"Agent\",t.turn_index+1 AS \"Turn\",t.tool_index+1 AS \"Tool order\",t.name AS \"Tool\",t.status AS \"Status\",round((t.duration_ms / 1000.0)::numeric,3) AS \"Duration (s)\",t.timing_source AS \"Timing source\",r.run_id AS \"Run ID\" FROM tool_calls t JOIN runs r USING(run_id) WHERE r.kind='healthcheck' AND r.environment IN (${environment:sqlstring}) AND agent IN (${agent:sqlstring}) AND $__timeFilter(r.started_at) ORDER BY r.started_at DESC,t.tool_index LIMIT 200",
+          "format": "table"
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+          "minWidth": 60
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Run ID"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Run detail",
+                    "url": "/d/ta-run-detail/run-detail?var-run_id=${__data.fields[\"Run ID\"]}",
+                    "targetBlank": false
+                  }
+                ]
+              },
+              {
+                "id": "custom.width",
+                "value": 210
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Started (VN)"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 175
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Agent"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 90
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Turn"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 60
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Tool order"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 80
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Tool"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 150
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Status"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 85
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Duration (s)"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 100
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Timing source"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 120
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

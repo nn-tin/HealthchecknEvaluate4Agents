@@ -1,0 +1,289 @@
+{
+  "uid": "ta-run-detail",
+  "title": "Run Detail",
+  "schemaVersion": 39,
+  "version": 15,
+  "timezone": "Asia/Ho_Chi_Minh",
+  "refresh": "30s",
+  "time": {
+    "from": "now-7d",
+    "to": "now"
+  },
+  "tags": [
+    "ticketagents"
+  ],
+  "editable": false,
+  "templating": {
+    "list": [
+      {
+        "name": "run_id",
+        "label": "Run",
+        "type": "query",
+        "datasource": {
+          "type": "postgres",
+          "uid": "ticketagents-postgres"
+        },
+        "query": "SELECT run_id FROM runs ORDER BY started_at DESC LIMIT 500",
+        "refresh": 1,
+        "multi": false,
+        "includeAll": false
+      }
+    ]
+  },
+  "links": [
+    {
+      "title": "Health",
+      "url": "/d/ta-health"
+    },
+    {
+      "title": "Evaluation",
+      "url": "/d/ta-quality"
+    },
+    {
+      "title": "Latest Runs",
+      "url": "/d/ta-latest-runs"
+    }
+  ],
+  "panels": [
+    {
+      "id": 1,
+      "title": "Run information",
+      "type": "table",
+      "datasource": {
+        "type": "postgres",
+        "uid": "ticketagents-postgres"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 16
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "ticketagents-postgres"
+          },
+          "rawQuery": true,
+          "rawSql": "WITH details AS (SELECT f.sort_order,f.field,f.value FROM runs r CROSS JOIN LATERAL (VALUES (1,'Run ID',r.run_id),(2,'Kind',r.kind),(3,'Agent',r.agent),(4,'Environment',r.environment),(5,'Case ID',r.case_id),(6,'Batch ID',r.batch_id),(7,'Trigger',r.trigger),(8,'Scheduled (VN)',to_char(r.scheduled_for AT TIME ZONE 'Asia/Ho_Chi_Minh','DD/MM/YYYY HH24:MI:SS')),(9,'Started (VN)',to_char(r.started_at AT TIME ZONE 'Asia/Ho_Chi_Minh','DD/MM/YYYY HH24:MI:SS')),(10,'Finished (VN)',to_char(r.finished_at AT TIME ZONE 'Asia/Ho_Chi_Minh','DD/MM/YYYY HH24:MI:SS')),(11,'Status',r.status),(12,'Verdict',initcap(r.verdict)),(13,'Score',round(r.score::numeric,3)::text),(14,'Total time',round((r.duration_ms/1000.0)::numeric,3)::text || ' s'),(15,'First event',round((r.first_event_ms/1000.0)::numeric,3)::text || ' s'),(16,'TTFT',round((r.ttft_ms/1000.0)::numeric,3)::text || ' s'),(17,'Stream complete',r.stream_complete::text),(18,'Error',r.error),(19,'Conversation ID',r.conversation_id),(20,'Dify log',CASE WHEN r.dify_log_url ~ '^https?://' THEN '[Open Dify log](' || replace(r.dify_log_url,')','%29') || ')' ELSE r.dify_log_url END),(21,'Result file',r.result_file),(22,'Original JSON','[Download original JSON](http://localhost:8081/runs/' || r.run_id || '.json) (separate reports login required)')) AS f(sort_order,field,value) WHERE r.run_id = ${run_id:sqlstring}) SELECT l.field AS \"Run\",l.value AS \"Value\",r.field AS \"Result\",r.value AS \"Details\" FROM details l LEFT JOIN details r ON r.sort_order = l.sort_order + 11 WHERE l.sort_order <= 11 ORDER BY l.sort_order",
+          "format": "table"
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {"id": "byName", "options": "Run"},
+            "properties": [
+              {"id": "custom.width", "value": 175},
+              {"id": "custom.align", "value": "left"}
+            ]
+          },
+          {
+            "matcher": {"id": "byName", "options": "Value"},
+            "properties": [
+              {"id": "custom.width", "value": 375},
+              {"id": "custom.align", "value": "left"},
+              {"id": "custom.cellOptions", "value": {"type": "markdown"}}
+            ]
+          },
+          {
+            "matcher": {"id": "byName", "options": "Result"},
+            "properties": [
+              {"id": "custom.width", "value": 175},
+              {"id": "custom.align", "value": "left"}
+            ]
+          },
+          {
+            "matcher": {"id": "byName", "options": "Details"},
+            "properties": [
+              {"id": "custom.width", "value": 375},
+              {"id": "custom.align", "value": "left"},
+              {"id": "custom.cellOptions", "value": {"type": "markdown"}}
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 2,
+      "title": "Transcript (raw content)",
+      "type": "table",
+      "datasource": {
+        "type": "postgres",
+        "uid": "ticketagents-postgres"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 16,
+        "w": 24,
+        "h": 10
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "ticketagents-postgres"
+          },
+          "rawQuery": true,
+          "rawSql": "SELECT turn_index+1 AS turn,role,content,latency_ms FROM transcript_turns WHERE run_id = ${run_id:sqlstring} ORDER BY turn_index",
+          "format": "table"
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "sortBy": [
+          {
+            "displayName": "turn",
+            "desc": false
+          }
+        ]
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {"matcher": {"id": "byName", "options": "turn"}, "properties": [{"id": "displayName", "value": "Turn"}, {"id": "custom.width", "value": 75}, {"id": "custom.align", "value": "right"}, {"id": "decimals", "value": 0}]},
+          {"matcher": {"id": "byName", "options": "role"}, "properties": [{"id": "displayName", "value": "Role"}, {"id": "custom.width", "value": 110}, {"id": "custom.align", "value": "center"}]},
+          {"matcher": {"id": "byName", "options": "content"}, "properties": [{"id": "displayName", "value": "Content"}, {"id": "custom.width", "value": 820}, {"id": "custom.align", "value": "left"}]},
+          {"matcher": {"id": "byName", "options": "latency_ms"}, "properties": [{"id": "displayName", "value": "Latency"}, {"id": "custom.width", "value": 120}, {"id": "custom.align", "value": "right"}, {"id": "unit", "value": "ms"}, {"id": "decimals", "value": 0}]}
+        ]
+      }
+    },
+    {
+      "id": 3,
+      "title": "DeepEval metrics",
+      "type": "table",
+      "datasource": {
+        "type": "postgres",
+        "uid": "ticketagents-postgres"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 26,
+        "w": 24,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "ticketagents-postgres"
+          },
+          "rawQuery": true,
+          "rawSql": "SELECT regexp_replace(regexp_replace(name,'Metric$',''),'([a-z0-9])([A-Z])','\\1 \\2','g') AS name,score,threshold,success,status,reason,error FROM metric_results WHERE run_id = ${run_id:sqlstring} AND name NOT IN ('TurnContextualPrecisionMetric','TurnContextualRecallMetric','TurnContextualRelevancyMetric','TurnFaithfulnessMetric') ORDER BY metric_results.name",
+          "format": "table"
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {"matcher": {"id": "byName", "options": "name"}, "properties": [{"id": "displayName", "value": "Metric"}, {"id": "custom.width", "value": 220}, {"id": "custom.minWidth", "value": 170}, {"id": "custom.align", "value": "left"}]},
+          {"matcher": {"id": "byName", "options": "score"}, "properties": [{"id": "displayName", "value": "Score"}, {"id": "custom.width", "value": 70}, {"id": "custom.minWidth", "value": 65}, {"id": "custom.align", "value": "right"}, {"id": "decimals", "value": 3}]},
+          {"matcher": {"id": "byName", "options": "threshold"}, "properties": [{"id": "displayName", "value": "Threshold"}, {"id": "custom.width", "value": 90}, {"id": "custom.minWidth", "value": 85}, {"id": "custom.align", "value": "right"}, {"id": "decimals", "value": 3}]},
+          {"matcher": {"id": "byName", "options": "success"}, "properties": [{"id": "displayName", "value": "Success"}, {"id": "custom.width", "value": 85}, {"id": "custom.minWidth", "value": 75}, {"id": "custom.align", "value": "center"}]},
+          {"matcher": {"id": "byName", "options": "status"}, "properties": [{"id": "displayName", "value": "Status"}, {"id": "custom.width", "value": 100}, {"id": "custom.minWidth", "value": 90}, {"id": "custom.align", "value": "center"}]},
+          {"matcher": {"id": "byName", "options": "reason"}, "properties": [{"id": "displayName", "value": "Reason"}, {"id": "custom.minWidth", "value": 150}, {"id": "custom.align", "value": "left"}]},
+          {"matcher": {"id": "byName", "options": "error"}, "properties": [{"id": "displayName", "value": "Error"}, {"id": "custom.width", "value": 190}, {"id": "custom.minWidth", "value": 140}, {"id": "custom.align", "value": "left"}, {"id": "custom.inspect", "value": true}]}
+        ]
+      }
+    },
+    {
+      "id": 4,
+      "title": "Business rules",
+      "type": "table",
+      "datasource": {
+        "type": "postgres",
+        "uid": "ticketagents-postgres"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 35,
+        "w": 24,
+        "h": 7
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "ticketagents-postgres"
+          },
+          "rawQuery": true,
+          "rawSql": "SELECT CASE name WHEN 'no_internal_identifier_or_tool_leak' THEN 'No internal ID or tool leak' WHEN 'no_success_claim_without_tool_success' THEN 'No success claim without tool success' WHEN 'minimum_user_turns' THEN 'Minimum user turns' WHEN 'stream_complete' THEN 'Stream complete' ELSE initcap(replace(name,'_',' ')) END AS name,success,critical,reason FROM rule_results WHERE run_id = ${run_id:sqlstring} ORDER BY critical DESC,rule_results.name",
+          "format": "table"
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {"matcher": {"id": "byName", "options": "name"}, "properties": [{"id": "displayName", "value": "Rule"}, {"id": "custom.width", "value": 300}, {"id": "custom.align", "value": "left"}]},
+          {"matcher": {"id": "byName", "options": "success"}, "properties": [{"id": "displayName", "value": "Success"}, {"id": "custom.width", "value": 80}, {"id": "custom.align", "value": "center"}]},
+          {"matcher": {"id": "byName", "options": "critical"}, "properties": [{"id": "displayName", "value": "Critical"}, {"id": "custom.width", "value": 80}, {"id": "custom.align", "value": "center"}]},
+          {"matcher": {"id": "byName", "options": "reason"}, "properties": [{"id": "displayName", "value": "Reason"}, {"id": "custom.minWidth", "value": 150}, {"id": "custom.align", "value": "left"}]}
+        ]
+      }
+    },
+    {
+      "id": 5,
+      "title": "Tool trace",
+      "description": "Tool calls in this run, ordered by conversation turn and call order. Duration is shown only when reliable start and end timing is available. A blank duration means it could not be measured exactly, not zero seconds. Timing source identifies the origin of the timing data.",
+      "type": "table",
+      "datasource": {
+        "type": "postgres",
+        "uid": "ticketagents-postgres"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 42,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "ticketagents-postgres"
+          },
+          "rawQuery": true,
+          "rawSql": "SELECT turn_index+1 AS turn,tool_index+1 AS tool_order,name,status,started_at,ended_at,duration_ms,timing_source FROM tool_calls WHERE run_id = ${run_id:sqlstring} ORDER BY turn_index,tool_index",
+          "format": "table"
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {"matcher": {"id": "byName", "options": "turn"}, "properties": [{"id": "displayName", "value": "Turn"}, {"id": "custom.width", "value": 60}, {"id": "custom.align", "value": "right"}, {"id": "decimals", "value": 0}]},
+          {"matcher": {"id": "byName", "options": "tool_order"}, "properties": [{"id": "displayName", "value": "Tool order"}, {"id": "custom.width", "value": 80}, {"id": "custom.align", "value": "right"}, {"id": "decimals", "value": 0}]},
+          {"matcher": {"id": "byName", "options": "name"}, "properties": [{"id": "displayName", "value": "Tool"}, {"id": "custom.width", "value": 180}, {"id": "custom.align", "value": "left"}]},
+          {"matcher": {"id": "byName", "options": "status"}, "properties": [{"id": "displayName", "value": "Status"}, {"id": "custom.width", "value": 85}, {"id": "custom.align", "value": "center"}]},
+          {"matcher": {"id": "byName", "options": "started_at"}, "properties": [{"id": "displayName", "value": "Started (VN)"}, {"id": "custom.width", "value": 165}, {"id": "custom.align", "value": "left"}]},
+          {"matcher": {"id": "byName", "options": "ended_at"}, "properties": [{"id": "displayName", "value": "Ended (VN)"}, {"id": "custom.width", "value": 165}, {"id": "custom.align", "value": "left"}]},
+          {"matcher": {"id": "byName", "options": "duration_ms"}, "properties": [{"id": "displayName", "value": "Duration"}, {"id": "custom.width", "value": 95}, {"id": "custom.align", "value": "right"}, {"id": "unit", "value": "ms"}, {"id": "decimals", "value": 0}]},
+          {"matcher": {"id": "byName", "options": "timing_source"}, "properties": [{"id": "displayName", "value": "Timing source"}, {"id": "custom.width", "value": 130}, {"id": "custom.align", "value": "left"}]}
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+apiVersion: 1
+datasources:
+  - name: TicketAgents PostgreSQL
+    uid: ticketagents-postgres
+    type: postgres
+    access: proxy
+    url: postgres:5432
+    user: grafanareader
+    isDefault: true
+    editable: false
+    jsonData:
+      database: ticketagents
+      sslmode: disable
+      postgresVersion: 1700
+      timescaledb: false
+    secureJsonData:
+      password: $GRAFANA_READER_PASSWORD
